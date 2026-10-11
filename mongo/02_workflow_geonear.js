@@ -1,8 +1,8 @@
-// Select database
-const db = db.getSiblingDB("ridesync_mongo");
+// Run with mongosh --file mongo/02_workflow_geonear.js.
+use(process.env.MONGO_DB || "ridesync_mongo");
 
 
-export function findNearestVehicle(
+function findNearestVehicle(
     longitude,
     latitude,
     maxDistanceMeters = 5000
@@ -32,3 +32,9 @@ export function findNearestVehicle(
 
     return result.length > 0 ? result[0] : null;
 }
+
+// The inherited telemetry seeder generates points around Hyderabad.
+printjson(findNearestVehicle(
+    Number(process.env.ORIGIN_LONGITUDE || 78.4867),
+    Number(process.env.ORIGIN_LATITUDE || 17.3850)
+));

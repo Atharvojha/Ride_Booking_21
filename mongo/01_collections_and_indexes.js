@@ -1,8 +1,8 @@
-use("ridesync_mongo");
+use(process.env.MONGO_DB || "ridesync_mongo");
 
-db.createCollection("VehicleMetadata");
-db.createCollection("TripReviews");
-db.createCollection("TelemetryPings");
+for (const name of ["VehicleMetadata", "TripReviews", "TelemetryPings"]) {
+    if (!db.getCollectionNames().includes(name)) db.createCollection(name);
+}
 
 // Geospatial index for finding nearby vehicles
 db.TelemetryPings.createIndex({
@@ -19,6 +19,6 @@ db.TelemetryPings.createIndex(
     }
 );
 
-db.vehicleMetadata.createIndex({
+db.VehicleMetadata.createIndex({
     vehicle_id: 1
 });

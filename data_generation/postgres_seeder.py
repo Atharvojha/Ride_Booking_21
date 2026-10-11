@@ -6,23 +6,24 @@ import psycopg2.extras as extras
 from faker import Faker
 from pymongo import MongoClient
 
-# ---------- CONFIG: put your real Postgres password below ----------
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 PG_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "ridesync_db",
-    "user": "postgres",
-    "password": "1234",   # <-- make sure this matches what worked in psql
+    "host": os.getenv("PGHOST", "localhost"),
+    "port": int(os.getenv("PGPORT", "5432")),
+    "dbname": os.getenv("PGDATABASE", "ridesync_db"),
+    "user": os.getenv("PGUSER", "postgres"),
+    "password": os.getenv("PGPASSWORD", ""),
 }
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB = os.getenv("MONGO_DB", "ridesync_mongo")
 
-# ---------- CONFIG: MongoDB connection ----------
-MONGO_URI = "mongodb://localhost:27017"
-MONGO_DB = "ridesync_mongo"
-
-
-NUM_RIDERS = 100000
-NUM_VEHICLES = 40000
-NUM_TRIPS = 50000
+NUM_RIDERS = int(os.getenv("NUM_RIDERS", "100000"))
+NUM_VEHICLES = int(os.getenv("NUM_VEHICLES", "40000"))
+NUM_TRIPS = int(os.getenv("NUM_TRIPS", "50000"))
 DAYS_SPREAD = 60
 
 fake = Faker("en_IN")   # Indian names/locale for realism
@@ -115,12 +116,12 @@ def seed_vehicles(conn):
     with conn.cursor() as cur:
         rows = extras.execute_values(
             cur,
-            "INSERT INTO vehicles (license_plate, class, is_active) VALUES %s RETURNING id, class",
+            "INSERT INTO vehicles (license_plate, class, is_active) VALUES %s RETURNING id, class, is_active",
             data,
             fetch=True,
         )
     conn.commit()
-    vehicles = [{"id": row[0], "class": row[1]} for row in rows]
+    vehicles = [{"id": row[0], "class": row[1], "is_active": row[2]} for row in rows]
     print(f"  done. {len(vehicles)} vehicles created.")
     return vehicles
 
@@ -204,6 +205,10 @@ def seed_trips(conn, rider_balances, vehicles):
     print(f"Attempting {NUM_TRIPS} trips via sp_book_trip/sp_release_escrow...")
     start = time.time()
 
+    active_vehicles = [v for v in vehicles if v.get('is_active', True)]
+    if not active_vehicles:
+        raise ValueError('No active vehicles are available for trip seeding.')
+
     conn.autocommit = True
 
     eligible_riders = dict(rider_balances)  # rider_id -> current balance
@@ -252,18 +257,22 @@ def seed_trips(conn, rider_balances, vehicles):
             # Top up anyone whose balance has drifted too low, so the
             # fare clamp below never has to deal with near-zero funds.
             if eligible_riders[rider_id] < 30:
-                eligible_riders[rider_id] += 500.00  # simple top-up
+                cur.execute(
+                    "UPDATE riders SET wallet_balance = wallet_balance + 500 WHERE id = %s RETURNING wallet_balance",
+                    (rider_id,),
+                )
+                eligible_riders[rider_id] = float(cur.fetchone()[0])
 
-            vehicle = random.choice(vehicles)
+            vehicle = random.choice(active_vehicles)
             fare = fare_for_class(vehicle["class"])
             fare = round(min(fare, eligible_riders[rider_id]), 2)
             fare = max(fare, 1.00)
 
             cur.execute(
-                "CALL sp_book_trip(%s, %s, %s, NULL, NULL)",
+                "CALL sp_book_trip(%s, %s, %s, NULL, NULL, NULL)",
                 (rider_id, vehicle["id"], fare)
             )
-            trip_id, status = cur.fetchone()
+            trip_id, status, audit_id = cur.fetchone()
 
             if status != "BOOKED":
                 # Should not happen given the guarantees above — log

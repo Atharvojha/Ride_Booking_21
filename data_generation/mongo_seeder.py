@@ -3,25 +3,24 @@ import time
 import datetime
 import psycopg2
 import pymongo
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 PG_CONFIG = {
-    "host": input("PostgreSQL host [localhost]: ") or "localhost",
-    "port": int(input("PostgreSQL port [5432]: ") or 5432),
-    "dbname": input("Database name [ridesync_db]: ") or "ridesync_db",
-    "user": input("PostgreSQL user [postgres]: ") or "postgres",
-    "password": input("PostgreSQL password: "),
+    "host": os.getenv("PGHOST", "localhost"),
+    "port": int(os.getenv("PGPORT", "5432")),
+    "dbname": os.getenv("PGDATABASE", "ridesync_db"),
+    "user": os.getenv("PGUSER", "postgres"),
+    "password": os.getenv("PGPASSWORD", ""),
 }
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB = os.getenv("MONGO_DB", "ridesync_mongo")
 
-MONGO_URI = input(
-    "MongoDB URI [mongodb://localhost:27017]: "
-) or "mongodb://localhost:27017"
-
-MONGO_DB = input(
-    "MongoDB database [ridesync_mongo]: "
-) or "ridesync_mongo"
-
-NUM_PINGS = int(input("Number of pings [520000]: ") or 520000)
-TTL_WINDOW_SECONDS = int(input("TTL window in seconds [1800]: ") or 1800)
-BATCH_SIZE = int(input("Batch size [5000]: ") or 5000)
+NUM_PINGS = int(os.getenv("NUM_PINGS", "520000"))
+TTL_WINDOW_SECONDS = int(os.getenv("TTL_WINDOW_SECONDS", "1800"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "5000"))
 
 # Roughly Hyderabad city bounds
 CITY_CENTER = (78.4867, 17.3850)   # (longitude, latitude)

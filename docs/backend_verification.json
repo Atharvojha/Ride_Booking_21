@@ -1,0 +1,150 @@
+{
+  "database": "ridesync_verify_20261011_103515_052886",
+  "scale": "small sample dataset; large dataset tests are still pending",
+  "results": [
+    {
+      "check": "SQL setup: 01_schema_ddl.sql",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "SQL setup: 02_indexes.sql",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "SQL setup: 03_triggers_and_audit.sql",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "SQL setup: 04_stored_procedures.sql",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "SQL setup: 05_materialized_views.sql",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "SQL setup: 06_window_analytics.sql",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Mongo setup script",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "PostgreSQL + metadata seeder (100 riders/40 vehicles/100 trip attempts)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Mongo telemetry + review seeder (1000 pings)",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking success",
+      "passed": true,
+      "detail": "BOOKED"
+    },
+    {
+      "check": "Wallet trigger",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Duplicate active trip rejected without debit/audit",
+      "passed": true,
+      "detail": "FAILED: duplicate key value violates unique constraint \"idx_one_active_trip_per_rider\""
+    },
+    {
+      "check": "Insufficient funds rejected without debit/audit",
+      "passed": true,
+      "detail": "FAILED: insufficient wallet balance or invalid data (new row for relation \"riders\" violates check constraint \"riders_wallet_balance_nonnegative\")"
+    },
+    {
+      "check": "Trip completion",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "New booking allowed after completion",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Moving average + DENSE_RANK results",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Initial materialized view needs post-seed refresh",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Materialized view refresh",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Seeder top-up persists before booking",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Seeder top-up and booking both audited",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Inherited Mongo workflow: 02_workflow_geonear.js",
+      "passed": true,
+      "detail": "{\n  _id: ObjectId('6acb190cd69fec55231f3476'),\n  vehicle_id: 'a392edf2-4d18-4959-941c-4ccbf940d0e0',\n  is_available: true,\n  location: {\n    type: 'Point',\n    coordinates: [\n      78.483224,\n      17.384504\n    ]\n  },\n  created_at: ISODate('2026-10-11T05:03:42.538Z'),\n  distance_meters: 373.37371641157046\n}"
+    },
+    {
+      "check": "Inherited Mongo workflow: 03_workflow4_facet.js",
+      "passed": true,
+      "detail": "[\n  {\n    ratingStats: [\n      {\n        _id: 1,\n        count: 1\n      },\n      {\n        _id: 2,\n        count: 1\n      },\n      {\n        _id: 3,\n        count: 10\n      },\n      {\n        _id: 4,\n        count: 24\n      },\n      {\n        _id: 5,\n        count: 26\n      }\n    ],\n    averageRating: [\n      {\n        totalReviews: 62,\n        avgRating: 4.18\n      }\n    ],\n    topFeedbackTags: [\n      {\n        _id: 'GOOD_MUSIC',\n        count: 16\n      },\n      {\n        _id: 'RASH_DRIVING',\n        count: 12\n      },\n      {\n        _id: 'POLITE_DRIVER',\n        count: 12\n      },\n      {\n        _id: 'FRIENDLY_DRIVER',\n        count: 11\n      },\n      {\n        _id: 'SAFE_DRIVING',\n        count: 11\n      },\n      {\n        _id: 'LATE_ARRIVAL',\n        count: 11\n      },\n      {\n        _id: 'COMFORTABLE_RIDE',\n        count: 10\n      },\n      {\n        _id: 'CLEAN_VEHICLE',\n        count: 10\n      },\n      {\n        _id: 'AC_NOT_WORKING',\n        count: 9\n      },\n      {\n        _id: 'OVERCHARGED',\n        count: 9\n      }\n    ]\n  }\n]"
+    },
+    {
+      "check": "VehicleMetadata records present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "VehicleMetadata lookup index on correct collection",
+      "passed": true,
+      "detail": "['_id_', 'vehicle_id_1']"
+    },
+    {
+      "check": "Telemetry 2dsphere index",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Telemetry TTL 7200 seconds",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Database geoNear at Hyderabad origin",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "source_commit_before_verification": "d0d5ad44ba4ab2f566cd965e055870ddd7e95697",
+  "working_tree_changes_tested": [
+    "data_generation/postgres_seeder.py",
+    "data_generation/mongo_seeder.py",
+    "mongo/01_collections_and_indexes.js",
+    "mongo/02_workflow_geonear.js",
+    "mongo/03_workflow4_facet.js"
+  ],
+  "verified_at": "2026-10-11"
+}

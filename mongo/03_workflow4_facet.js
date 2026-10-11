@@ -1,4 +1,4 @@
-use("ridesync_mongo");
+use(process.env.MONGO_DB || "ridesync_mongo");
 
 
 const result = db.TripReviews.aggregate([
