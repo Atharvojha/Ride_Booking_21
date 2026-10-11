@@ -40,3 +40,14 @@ The booking procedure now checks fare limits and active vehicles, returns the ex
 Audit timestamps now use the actual write time. Completion locks the rider's wallet before changing the trip, using the same lock order as booking. This keeps its zero-change release entry in the right order when a top-up happens at the same time.
 
 Checked 36 API cases and reran all 27 backend checks successfully. An independent verifier ran both suites and extra direct database and concurrency checks. The API test client gives one dependency warning. Large dataset and browser UI checks remain pending. See api_verification.json for this step's results and api/README.md for setup.
+
+
+## Remaining API workflows — 11 October 2026
+
+Added analytics, nearby vehicles and review routes. SQL 08 extends the inherited revenue window query with zero-revenue calendar days, six earlier days of history and whole-fleet ranks. The original view remains for attribution. SQL 07 saves the successful materialized-view refresh time inside the refresh function; a shared database lock prevents overlapping refreshes. A failed refresh keeps the earlier time and results.
+
+Nearby search uses geoNear and checks every candidate against its vehicle's latest ping, including newer unavailable or distant positions. It ignores future and expired pings, gets active vehicle labels from SQL, and limits only the valid results. Mongo 04 adds lookup and review indexes. Review filters run before facets and pagination. Empty review summaries return no average rating and zero counts.
+
+All 60 API tests and 29 backend checks passed in VS Code and in the independent verification run. The backend total now includes setup checks for SQL 07 and 08; the earlier 27-check report remains historical. The verifier also checked database calculations and a small Mongo query plan independently. No full-scale performance result is claimed.
+
+The local demo passed six live read routes and a summary refresh. Existing SQL record counts stayed unchanged when the additions were applied. The original telemetry had expired, so the live nearby response was empty; isolated tests used fresh pings. The frontend, browser tests, large dataset checks, demo recording and submission package remain pending.

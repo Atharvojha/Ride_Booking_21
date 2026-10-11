@@ -1,37 +1,47 @@
 {
-  "checkedAt": "2026-10-11T05:52:03.656783+00:00",
-  "step": "Browsing, booking, trip status and wallet API",
+  "checkedAt": "2026-10-11T10:15:31.194103+00:00",
+  "step": "All assignment API workflows",
   "apiChecks": {
     "command": "python -m pytest tests/test_api.py -q",
-    "passed": 36,
+    "passed": 60,
     "failed": 0,
     "warning": "Starlette TestClient warns that httpx support is deprecated."
   },
   "backendChecks": {
     "command": "python tests/backend_smoke.py",
-    "passed": 27,
-    "failed": 0
+    "passed": 29,
+    "failed": 0,
+    "note": "Includes two new SQL setup checks; the original report records 27."
   },
-  "independentReview": "The verifier independently passed both suites, checked SQL edge cases and reproduced the concurrent wallet audit cases after the fix.",
+  "independentReview": "The verifier passed both suites and separately checked calendar averages/ranks, refresh rollback and locks, latest-ping filters, more than 100 rejected map candidates, review dates/pages and small-fixture Mongo index use.",
   "pending": [
-    "Analytics, nearby search and reviews API",
     "Web frontend and browser tests",
-    "Large dataset checks"
+    "Large dataset checks",
+    "Demo recording and submission package"
   ],
   "localDemo": {
+    "checkedAt": "2026-10-11T10:13:46.976522+00:00",
     "database": "ridesync_team10",
-    "health": {
-      "postgres": "ok",
-      "mongo": "ok"
-    },
     "counts": {
       "riders": 100,
       "vehicles": 40,
       "trips": 100,
+      "wallet_audit_logs": 197,
       "metadata": 40,
       "reviews": 56,
-      "pingsAtCheck": 1000
+      "pingsAtCheck": 0
     },
-    "checks": "Live paginated lists, vehicle metadata and updated booking signature passed. Demo data was seeded separately from test databases."
+    "health": {
+      "postgres": "ok",
+      "mongo": "ok"
+    },
+    "liveChecks": {
+      "routesPassed": 6,
+      "refreshPassed": true,
+      "lastRefreshedAt": "2026-10-11T10:14:20.328895Z",
+      "reviewCount": 56,
+      "nearbyCount": 0,
+      "note": "Seeded pings expired after two hours; the live map response is empty. Latest-ping and map distance checks passed in isolated tests."
+    }
   }
 }

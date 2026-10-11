@@ -8,17 +8,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pymongo.errors import PyMongoError
 
+from api.analytics import router as analytics_router
+from api.nearby import router as nearby_router
+from api.reviews import router as review_router
 from api.browse import router as browse_router
 from api.common import ApiError
 from api.database import mongo, one, postgres
 from api.transactions import router as transaction_router
 
 logger = logging.getLogger('ridesync.api')
-app = FastAPI(title='RideSync Team 10 API', version='0.1.0',
-              description='Assignment demo: browsing, booking, trip status and wallet history.')
+app = FastAPI(title='RideSync Team 10 API', version='0.2.0',
+              description='Assignment demo: browsing, booking, wallet history, revenue, nearby vehicles and reviews.')
 app.add_middleware(CORSMiddleware,
                    allow_origins=os.getenv('WEB_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(','),
                    allow_methods=['GET', 'POST', 'PATCH'], allow_headers=['Content-Type'])
+app.include_router(nearby_router)
+app.include_router(analytics_router)
+app.include_router(review_router)
 app.include_router(browse_router)
 app.include_router(transaction_router)
 
@@ -47,6 +53,12 @@ async def postgres_error(request, exc):
     if isinstance(exc, (psycopg2.OperationalError, psycopg2.InterfaceError)):
         return error_reply(503, 'DATABASE_UNAVAILABLE', 'The data service is unavailable. Try again shortly.')
     return error_reply(500, 'INTERNAL_ERROR', 'The request could not be completed.')
+
+
+@app.exception_handler(PyMongoError)
+async def mongo_error(request, exc):
+    logger.error('MongoDB request failed: %s', type(exc).__name__)
+    return error_reply(503, 'DATABASE_UNAVAILABLE', 'The data service is unavailable. Try again shortly.')
 
 
 @app.exception_handler(Exception)
