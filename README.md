@@ -1,104 +1,193 @@
-# Team 10 — Assignment 2 setup
+# RideSync — Team 10, Assignment 2 (Front End Design)
 
-Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride_Booking_21). Inherited source: [amaan070/Ride_Booking_21](https://github.com/amaan070/Ride_Booking_21), starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`. All 23 inherited commits are preserved.
+RideSync is a ride-booking application. This is **Project P2**. It puts a web front end and a small API on top of a PostgreSQL + MongoDB backend that another team built in Assignment 1.
 
-We checked the database scripts and fixed the problems we found. The API now covers browsing, booking, trip status changes, wallet history, revenue, nearby vehicles and reviews. The React frontend now connects all six required screens to this API. See the one-page [handover note](docs/handover_note.md) (the detailed record is in [handover history](docs/handover_history.md)), [full-size verification report](docs/scale_verification.md), [API endpoints](docs/api_endpoints.md), [viva notes](docs/viva_notes.md) and [demo script](docs/demo_script.md). The [backend results](docs/backend_verification.json) are the earlier small-sample report. The Figma prototype is the design reference, not a connected application.
+| | |
+|---|---|
+| Team | 10 |
+| Team repository | https://github.com/Atharvojha/Ride_Booking_21 |
+| Inherited repository | https://github.com/amaan070/Ride_Booking_21 (starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`, all 23 original commits kept) |
+| Final commit hash | **TO BE FILLED BEFORE SUBMISSION** |
+| Demo video (5 minutes at most) | **TO BE FILLED BEFORE SUBMISSION** |
 
-The backend, API and frontend work has been merged into main (pull requests 1 to 3). Later work is on pull requests of its own.
+## Contents
 
-## Current setup (macOS/Linux)
+1. [What the application does](#what-the-application-does)
+2. [Screenshots](#screenshots)
+3. [Setup](#setup)
+4. [Tests](#tests)
+5. [Technology choices](#technology-choices)
+6. [Assumptions](#assumptions)
+7. [Changes to the inherited database scripts](#changes-to-the-inherited-database-scripts)
+8. [Repository structure and documents](#repository-structure-and-documents)
+9. [Contribution table](#contribution-table)
+10. [Inherited Assignment 1 documentation](#inherited-assignment-1-documentation) (kept below for attribution)
 
-Requires running PostgreSQL, MongoDB, mongosh, Python 3.11 or newer and Git. PostgreSQL needs a role that can create the development and smoke-test databases. Configure your local role/password; do not commit credentials.
+## What the application does
+
+Two kinds of users: a **rider** (books trips, checks their wallet) and a **fleet operator** (browses data, moves trips through their statuses, checks revenue, nearby vehicles and reviews). The header has a searchable demo-rider selector. There is no real login. Users and wireframes are in [docs/design](docs/design/README.md).
+
+| Screen | What you can do | Database work |
+|---|---|---|
+| Browse Data | Search, filter, page through riders, vehicles and trips; open a record; start and complete a trip | SQL tables, paged in the database (at most 100 rows per page) |
+| Book a Trip | Pick a rider and an active vehicle, enter a fare, see the balance before and after and the new wallet audit entry; friendly messages for low balance and for a second active trip | `sp_book_trip`, the wallet audit trigger and the partial unique index |
+| Wallet Audit | See a rider's wallet history with a date filter and the saved running balance | `wallet_audit_logs` |
+| Vehicle Analytics | Seven-day moving-average chart, daily `DENSE_RANK` table, lifetime totals with a "last refreshed" time and a refresh button | window-function query, materialized view |
+| Nearby Vehicles | Pick an origin on the map; vehicles within 5 km sorted by distance; new positions appear without reloading (polling) | MongoDB `$geoNear` |
+| Trip Reviews | Rating distribution, average, top tags, review list and a vehicle's flexible metadata (features, inspections) | MongoDB `$facet`, `VehicleMetadata` |
+
+Every screen shows loading, empty and error messages, and works on a laptop and on a phone. Endpoint inputs and outputs are in [docs/api_endpoints.md](docs/api_endpoints.md).
+
+## Screenshots
+
+These were taken by the browser tests, using small temporary test records (not real accounts). The map capture has map tiles blocked, so the markers and distance list are shown without the background map.
+
+| | |
+|---|---|
+| ![Browse](docs/design/screenshots/browse-desktop.png) Browse | ![Booking](docs/design/screenshots/booking-desktop.png) Booking with audit entry |
+| ![Wallet](docs/design/screenshots/wallet-desktop.png) Wallet audit | ![Analytics](docs/design/screenshots/analytics-desktop.png) Analytics |
+| ![Nearby](docs/design/screenshots/nearby-desktop.png) Nearby vehicles | ![Reviews](docs/design/screenshots/reviews-desktop.png) Reviews and metadata |
+| ![Phone](docs/design/screenshots/wallet-phone.png) Phone layout | |
+
+## Setup
+
+**You need:** PostgreSQL, MongoDB, `mongosh`, Python 3.11 or newer, Node.js and Git. Both databases must be running. Your PostgreSQL role must be allowed to create databases. We did not provide a `docker-compose.yml`.
+
+### 1. Create and fill the databases
+
+Run these from the repository root. Use a **new** database: the schema scripts are not reset scripts.
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r api/requirements.txt -r data_generation/requirements.txt
-cp .env.example .env
-# Edit .env for your local database role and connection settings.
-set -a
-source .env
-set +a
+cp .env.example .env          # then edit .env: your PostgreSQL role and password
+set -a; source .env; set +a   # load the settings into this terminal
 createdb "$PGDATABASE"
-for script in sql/*.sql; do
-  psql -v ON_ERROR_STOP=1 -f "$script" || break
-done
+for script in sql/*.sql; do psql -v ON_ERROR_STOP=1 -f "$script" || break; done
 mongosh "$MONGO_URI" --quiet --file mongo/01_collections_and_indexes.js
 mongosh "$MONGO_URI" --quiet --file mongo/04_api_indexes.js
 python data_generation/postgres_seeder.py
 python data_generation/mongo_seeder.py
 psql -v ON_ERROR_STOP=1 -c 'SELECT refresh_mv_vehicle_lifetime_stats();'
-mongosh "$MONGO_URI" --quiet --file mongo/02_workflow_geonear.js
-mongosh "$MONGO_URI" --quiet --file mongo/03_workflow4_facet.js
 ```
 
-Use a new database for initial setup; schema SQL is not a reset script. Stop if a step reports an error. Both databases must be running before the PostgreSQL seeder, because it also writes VehicleMetadata. Seeders append data; rerunning them is not a reset. Refresh the materialized view after seeding. Telemetry expires after two hours. For a later map demonstration run `python data_generation/refresh_demo_pings.py --dry-run` to see the plan, then run it without `--dry-run`. It only adds fresh pings. Do not rerun `mongo_seeder.py` for this, because it also adds reviews again.
+Stop if any step shows an error. Notes:
 
-`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. Concurrent booking and completion tests pass. We ran the full-size set on 11 October 2026 in separate `ridesync_scale_20261011` databases; see [the full-size report](docs/scale_verification.md) for counts, timings, query plans and what we changed.
+- `.env` holds your passwords and is not committed. `.env.example` makes a small dataset (100 riders, 40 vehicles, 100 trips, 1,000 pings). The inherited full size is `NUM_RIDERS=100000 NUM_VEHICLES=40000 NUM_TRIPS=50000 NUM_PINGS=520000`; see [the full-size report](docs/scale_verification.md).
+- The PostgreSQL seeder also writes vehicle metadata to MongoDB, so start both databases first.
+- The seeders only add data. Running them again does not reset anything. Use a new database to start over.
+- Vehicle positions (pings) are deleted after two hours, so the map is empty after that. To add fresh pings run `python data_generation/refresh_demo_pings.py` (add `--dry-run` to see the plan first). Do not run `mongo_seeder.py` again for this, because it adds the reviews a second time.
 
-## Run the API
+### 2. Start the API
 
-For an already-seeded database, load your .env settings and apply these updated scripts:
-
-~~~sh
-set -a
-source .env
-set +a
-psql -v ON_ERROR_STOP=1 -f sql/03_triggers_and_audit.sql
-psql -v ON_ERROR_STOP=1 -f sql/04_stored_procedures.sql
-psql -v ON_ERROR_STOP=1 -f sql/07_api_refresh_state.sql
-psql -v ON_ERROR_STOP=1 -f sql/08_api_revenue.sql
-mongosh "$MONGO_URI" --quiet --file mongo/04_api_indexes.js
-~~~
-
-These update the wallet procedures, add the revenue query and refresh-time record, and add Mongo indexes without resetting data. They can be applied again. The refresh time starts as Unknown until the next successful refresh. Stop on any error. New databases receive the SQL additions in the setup loop above. Do not rerun sql/01_schema_ddl.sql or sql/05_materialized_views.sql on an existing database.
-
-~~~sh
+```sh
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
-~~~
+```
 
-Open [API docs](http://127.0.0.1:8000/docs) to try requests. See [API setup](api/README.md) and [API check results](docs/api_verification.json). FastAPI lets us keep the server small and reuse the inherited database procedures. The frontend uses React, Vite, plain CSS, Leaflet and small SVG/CSS charts.
+Check http://127.0.0.1:8000/api/health (both databases should say `ok`). Request forms are at http://127.0.0.1:8000/docs. More in [api/README.md](api/README.md).
 
-## Run the frontend
+### 3. Start the web app
 
-Keep the API running in one VS Code terminal. In a second terminal, from the repository root:
+In a second terminal:
 
-~~~sh
+```sh
 cd web
 npm ci
 npm run dev
-~~~
-
-Open [RideSync](http://127.0.0.1:5173). Vite sends /api requests to the local API at port 8000. Choose a demo rider in the header. Browse has riders, vehicles and trips; trip details let you start and complete a trip. The other screens cover booking, wallet history, revenue, nearby vehicles and reviews. A nearby search can be empty because telemetry expires after two hours.
-
-Node 26.8.2 was used for these checks. See [frontend setup and tests](web/README.md) and [frontend check results](docs/frontend_verification.json). The map uses OpenStreetMap tiles with visible attribution. If tiles fail, the result list still shows coordinates and distances.
-
-## Backend checks
-
-```sh
-python tests/backend_smoke.py
-python -m pytest tests/test_api.py -q
 ```
 
-The script creates unique `ridesync_verify_*` databases, uses a small sample dataset and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. The test databases are kept so we can inspect the results. It exits nonzero if any check fails. The original checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0. The current run passes 29 checks, including setup of the two new SQL scripts. The API suite has 62 passing checks; it creates separate test databases and removes them afterwards. One dependency warning from the test client remains. `python -m pytest tests/test_demo_pings.py -q` checks the telemetry helper (9 tests). `tests/scale_check.py` is the full-size check (75 checks); it only runs against databases whose names contain `scale` and is explained in the full-size report.
+Open http://127.0.0.1:5173. The web server passes `/api` requests to the API on port 8000. More in [web/README.md](web/README.md).
 
-## Changes and assumptions
+### Updating a database you already created
 
-- Fixed mongosh execution of nearby search; default coordinates match Hyderabad seed data.
-- Fixed case-sensitive VehicleMetadata index and repeatable Mongo collection setup.
-- Replaced embedded/prompted connection settings with environment configuration.
-- Fixed seeder top-ups to update the real wallet and fire its audit trigger.
-- Added .env.example, ignored local credentials/dependencies, tests and handover/API documentation; corrected the inherited ERD filename.
-- Booking now rejects inactive vehicles and invalid fares in the procedure, returns the exact trigger-created audit ID, and uses that row for before/after balances. Seeded trips use active vehicles. Completion locks the wallet before the trip and records the actual audit time, so a concurrent top-up does not reorder the running balance.
-- The booking procedures finish their own database transactions. The API must call them directly, without starting another transaction around them. The inherited view averages seven revenue rows. The new api_vehicle_revenue function keeps that window-query approach but averages seven calendar days, including zero-revenue days, and ranks each day across the whole fleet.
-- Summary refreshes now save their successful time and allow only one refresh at a time. Nearby search checks the latest ping before availability/radius/freshness filters and removes inactive or missing vehicles before limiting results. Review summaries and pages use Mongo aggregation filters.
-- The header provides searchable demo rider switching. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. The design uses INR and a user-entered fare; route fields and cancellation are outside the required demo.
+If your database was made from the original Assignment 1 scripts, apply the changed ones. They can be run again safely. Do not rerun `sql/01_schema_ddl.sql` or `sql/05_materialized_views.sql` on an existing database.
 
-## Submission checklist (pending)
+```sh
+for script in sql/03_triggers_and_audit.sql sql/04_stored_procedures.sql sql/07_api_refresh_state.sql sql/08_api_revenue.sql; do
+  psql -v ON_ERROR_STOP=1 -f "$script" || break
+done
+mongosh "$MONGO_URI" --quiet --file mongo/04_api_indexes.js
+```
 
-Wireframes and user descriptions are saved in docs/design/. The frontend, small-dataset UI checks and full-size checks are complete. Still pending: the demo of at most five minutes (the plan is in docs/demo_script.md; it has not been recorded), the actual contribution table, the demo link and the final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
+## Tests
 
-Team members will be added to the contribution table when details are provided; record each person's actual design and code work. Collaborator access is managed by the team owner.
+| Command | What it checks |
+|---|---|
+| `python -m pytest tests/test_api.py -q` | The API against temporary databases (62 tests): booking, low balance, second active trip, concurrent bookings, status changes, wallet history, revenue, refresh, nearby, reviews, bad input and database outages |
+| `python tests/backend_smoke.py` | The inherited database scripts on a small dataset (29 checks) |
+| `python -m pytest tests/test_demo_pings.py -q` | The fresh-ping helper (9 tests) |
+| `cd web && npm test` | Front-end unit tests (23 tests) |
+| `cd web && npm run test:browser` | Nine browser tests with the real API and temporary databases. Needs Chrome and free ports 8001 and 5174. Set `RIDESYNC_TEST_PYTHON` to your Python path. |
+| `python tests/scale_check.py ...` | Full-size checks (75 checks), described in [docs/scale_verification.md](docs/scale_verification.md) |
+
+The API and browser tests create their own databases and remove them. `backend_smoke.py` keeps its `ridesync_verify_*` databases so you can inspect them. Some browser failures (a lost reply, a service outage) are simulated on purpose.
+
+## Technology choices
+
+- **PostgreSQL and MongoDB** are inherited. PostgreSQL keeps money and trips safe with transactions, constraints and triggers. MongoDB holds flexible vehicle metadata, expiring GPS pings and map queries.
+- **FastAPI** (with psycopg2 and PyMongo) is a small server that checks its inputs and describes itself at `/docs`. It calls the inherited stored procedures and pipelines instead of repeating their logic.
+- **React with Vite and plain CSS** lets the six screens share forms, tables and dialogs without a heavy toolkit.
+- **Leaflet with OpenStreetMap** draws the map (the attribution stays visible). **Small SVG charts** show the numbers without another chart package.
+- **pytest, Vitest and Playwright** test the API, the screen logic and the real browser flows.
+
+## Assumptions
+
+- Money is in **INR** (the schema has no currency). The user types the fare.
+- Date filters and the daily revenue use **Asia/Kolkata** days. The API sends times in UTC.
+- Demo rider switching replaces login.
+- The only trip statuses are `REQUESTED`, `IN TRANSIT` and `COMPLETED`. There is no cancellation or refund. Completing a trip releases the held money; it does not return the fare.
+- A rider can have one `REQUESTED` or `IN TRANSIT` trip at a time. The partial unique index enforces it.
+- There is no driver table, rider contact, route or pickup place in the database, so we did not add them.
+- A seven-day average means seven calendar days, with zero for days without trips. Ranks compare the whole fleet on each day, and equal averages share a rank.
+- A vehicle ping is current for 7,200 seconds, the same as the MongoDB expiry. Only a vehicle's newest ping counts. The demo origin is Hyderabad (longitude 78.4867, latitude 17.3850), with a 5 km radius.
+- Lists show 25 rows by default and at most 100. The map refreshes every 10 seconds, only while the page is visible.
+- The Figma prototype is only a design reference. We left out its features that have no data behind them.
+
+## Changes to the inherited database scripts
+
+| File | Change | Why |
+|---|---|---|
+| `mongo/02_workflow_geonear.js` | Made it a runnable `mongosh` function with a Hyderabad demo call | The original failed under `mongosh` |
+| `mongo/01_collections_and_indexes.js` | Fixed the `VehicleMetadata` index name; collection setup can be repeated | The index used the wrong capital letter, so it indexed nothing |
+| `mongo/04_api_indexes.js` (new) | Indexes for each vehicle's newest ping and for review filters | Fast latest-ping and review lookups |
+| `data_generation/*_seeder.py` | Connection settings come from `.env`; dataset sizes are settings | One seeder had a password in the code, the other asked for it |
+| `data_generation/postgres_seeder.py` | Wallet top-ups update the real wallet; trips use active vehicles | Top-ups only changed a number in memory, so the audit trigger never ran |
+| `sql/03_triggers_and_audit.sql` | The trigger records the real write time and gives the new audit ID to the procedure | The API must show the exact audit row |
+| `sql/04_stored_procedures.sql` | Booking checks the fare and the vehicle and returns the audit ID; completion locks the wallet before the trip | Safer input, exact audit entry, same lock order in both procedures |
+| `sql/07_api_refresh_state.sql` (new) | The refresh saves its time and allows one refresh at a time | The "last refreshed" time and no overlapping refreshes |
+| `sql/08_api_revenue.sql` (new) | Seven-calendar-day average with zero days and whole-fleet ranks; the inherited view is kept | The inherited view averaged seven rows, which can be weeks |
+| `.env.example`, `.gitignore` | Added | Keep passwords and dependencies out of Git |
+| `docs/relational_erd.jpeg` | Corrected the file name used in the README | The ERD is a JPEG |
+
+The booking procedures end their own transactions, so the API calls them directly, never inside another transaction. We kept every original file and all original commits.
+
+## Repository structure and documents
+
+```text
+README.md                 this file
+docs/
+  handover_note.md        what worked, what did not, what we changed (about one page)
+  api_endpoints.md        every endpoint with inputs and outputs
+  design/                 users, wireframes, screenshots
+  scale_verification.md   full-size results, timings and query plans
+sql/  mongo/  data_generation/   the Assignment 1 scripts plus our fixes
+api/                      FastAPI server
+web/                      React application
+tests/                    API, helper and full-size tests
+performance/              original Assignment 1 performance output
+```
+
+## Contribution table
+
+The course expects every member to contribute to both design and code. The table below is **TO BE FILLED** with each member's name, GitHub username and real work before submission.
+
+| Member | GitHub | Design work | Code work |
+|---|---|---|---|
+| Atharv Ojha | Atharvojha | TO BE FILLED | TO BE FILLED |
+| TO BE FILLED | TO BE FILLED | TO BE FILLED | TO BE FILLED |
+| TO BE FILLED | TO BE FILLED | TO BE FILLED | TO BE FILLED |
+| TO BE FILLED | TO BE FILLED | TO BE FILLED | TO BE FILLED |
 
 ---
 
@@ -659,8 +748,6 @@ psql -U postgres -d <database_name> -f performance/pg_explain_queries.sql
 
 The relevant `EXPLAIN ANALYZE` excerpts and explanations for the required heavy workflows will be added to this section before final submission.
 
-> Team 10 note: the sentence above is from the original authors. Our own PostgreSQL plans for the browse, wallet, summary and revenue queries, taken on a full-size database on 11 October 2026, are in [docs/scale_explain_postgres.txt](docs/scale_explain_postgres.txt).
-
 ## MongoDB Performance Testing
 
 MongoDB performance analysis uses:
@@ -678,8 +765,6 @@ Get-Content performance/mongo_execution_stats.js | mongosh
 ```
 
 The relevant `executionStats` excerpts and explanations for the required heavy workflows will be added to this section before final submission.
-
-> Team 10 note: the sentence above is from the original authors. Our own MongoDB `executionStats` for nearby search, latest-ping lookup, reviews and metadata, taken on a full-size database on 11 October 2026, are in [docs/scale_explain_mongo.txt](docs/scale_explain_mongo.txt).
 
 ### Performance Evidence
 
@@ -3267,10 +3352,3 @@ END OF EXPLAIN STATS
 
 LAST COMMIT HASH:
 61449f3fca545f7e0fe0b0a5a24897a2dbcd108f
-
-
-## Team 10 design step
-
-The [design plan](docs/design/README.md) records users, required screens, shared styles, phone layouts and changes from the Figma prototype. Open [the six wireframes](docs/design/wireframes.html) in a browser. The [API plan](docs/api_endpoints.md) includes inputs, outputs and errors. These began as design documents. All required API workflows and the six web screens now work (this paragraph was written earlier, when the web app was still pending).
-
-Demo assumptions: INR, Asia/Kolkata date filters, a user-entered booking fare, a selectable demo rider, and a two-hour telemetry freshness limit matching the inherited expiry. Routes and real login are outside this step. Exact booking audit IDs, calendar-day revenue averages and saved refresh times are implemented. The original team's commit history is preserved.
