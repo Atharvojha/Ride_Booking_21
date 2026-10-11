@@ -2,9 +2,9 @@
 
 Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride_Booking_21). Inherited source: [amaan070/Ride_Booking_21](https://github.com/amaan070/Ride_Booking_21), starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`. All 23 inherited commits are preserved.
 
-We checked the database scripts and fixed the problems we found. The API now covers browsing, booking, trip status changes, wallet history, revenue, nearby vehicles and reviews. The React frontend now connects all six required screens to this API. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [API endpoints and remaining plan](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
+We checked the database scripts and fixed the problems we found. The API now covers browsing, booking, trip status changes, wallet history, revenue, nearby vehicles and reviews. The React frontend now connects all six required screens to this API. See the one-page [handover note](docs/handover_note.md) (the detailed record is in [handover history](docs/handover_history.md)), [full-size verification report](docs/scale_verification.md), [API endpoints](docs/api_endpoints.md), [viva notes](docs/viva_notes.md) and [demo script](docs/demo_script.md). The [backend results](docs/backend_verification.json) are the earlier small-sample report. The Figma prototype is the design reference, not a connected application.
 
-Backend and API work has been merged into main. The frontend is on [assignment2/frontend](https://github.com/Atharvojha/Ride_Booking_21/tree/assignment2/frontend) for review.
+The backend, API and frontend work has been merged into main (pull requests 1 to 3). Later work is on pull requests of its own.
 
 ## Current setup (macOS/Linux)
 
@@ -32,9 +32,9 @@ mongosh "$MONGO_URI" --quiet --file mongo/02_workflow_geonear.js
 mongosh "$MONGO_URI" --quiet --file mongo/03_workflow4_facet.js
 ```
 
-Use a new database for initial setup; schema SQL is not a reset script. Stop if a step reports an error. Both databases must be running before the PostgreSQL seeder, because it also writes VehicleMetadata. Seeders append data; rerunning them is not a reset. Refresh the materialized view after seeding. Telemetry expires after two hours; regenerate pings for later map demonstrations.
+Use a new database for initial setup; schema SQL is not a reset script. Stop if a step reports an error. Both databases must be running before the PostgreSQL seeder, because it also writes VehicleMetadata. Seeders append data; rerunning them is not a reset. Refresh the materialized view after seeding. Telemetry expires after two hours. For a later map demonstration run `python data_generation/refresh_demo_pings.py --dry-run` to see the plan, then run it without `--dry-run`. It only adds fresh pings. Do not rerun `mongo_seeder.py` for this, because it also adds reviews again.
 
-`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. Concurrent booking and completion tests pass. Large dataset checks are still pending.
+`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. Concurrent booking and completion tests pass. We ran the full-size set on 11 October 2026 in separate `ridesync_scale_20261011` databases; see [the full-size report](docs/scale_verification.md) for counts, timings, query plans and what we changed.
 
 ## Run the API
 
@@ -80,7 +80,7 @@ python tests/backend_smoke.py
 python -m pytest tests/test_api.py -q
 ```
 
-The script creates unique `ridesync_verify_*` databases, uses a small sample dataset and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. The test databases are kept so we can inspect the results. It exits nonzero if any check fails. The original checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0. The current run passes 29 checks, including setup of the two new SQL scripts. The API suite has 60 passing checks; it creates separate test databases and removes them afterwards. One dependency warning from the test client remains.
+The script creates unique `ridesync_verify_*` databases, uses a small sample dataset and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. The test databases are kept so we can inspect the results. It exits nonzero if any check fails. The original checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0. The current run passes 29 checks, including setup of the two new SQL scripts. The API suite has 62 passing checks; it creates separate test databases and removes them afterwards. One dependency warning from the test client remains. `python -m pytest tests/test_demo_pings.py -q` checks the telemetry helper (9 tests). `tests/scale_check.py` is the full-size check (75 checks); it only runs against databases whose names contain `scale` and is explained in the full-size report.
 
 ## Changes and assumptions
 
@@ -96,7 +96,7 @@ The script creates unique `ridesync_verify_*` databases, uses a small sample dat
 
 ## Submission checklist (pending)
 
-Wireframes and user descriptions are saved in docs/design/. The frontend and small-dataset UI checks are complete. Full-scale checks and a demo of at most five minutes are still pending. Before submission, update the actual contribution table, demo link and final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
+Wireframes and user descriptions are saved in docs/design/. The frontend, small-dataset UI checks and full-size checks are complete. Still pending: the demo of at most five minutes (the plan is in docs/demo_script.md; it has not been recorded), the actual contribution table, the demo link and the final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
 
 Team members will be added to the contribution table when details are provided; record each person's actual design and code work. Collaborator access is managed by the team owner.
 
@@ -659,6 +659,8 @@ psql -U postgres -d <database_name> -f performance/pg_explain_queries.sql
 
 The relevant `EXPLAIN ANALYZE` excerpts and explanations for the required heavy workflows will be added to this section before final submission.
 
+> Team 10 note: the sentence above is from the original authors. Our own PostgreSQL plans for the browse, wallet, summary and revenue queries, taken on a full-size database on 11 October 2026, are in [docs/scale_explain_postgres.txt](docs/scale_explain_postgres.txt).
+
 ## MongoDB Performance Testing
 
 MongoDB performance analysis uses:
@@ -676,6 +678,8 @@ Get-Content performance/mongo_execution_stats.js | mongosh
 ```
 
 The relevant `executionStats` excerpts and explanations for the required heavy workflows will be added to this section before final submission.
+
+> Team 10 note: the sentence above is from the original authors. Our own MongoDB `executionStats` for nearby search, latest-ping lookup, reviews and metadata, taken on a full-size database on 11 October 2026, are in [docs/scale_explain_mongo.txt](docs/scale_explain_mongo.txt).
 
 ### Performance Evidence
 
@@ -3267,6 +3271,6 @@ LAST COMMIT HASH:
 
 ## Team 10 design step
 
-The [design plan](docs/design/README.md) records users, required screens, shared styles, phone layouts and changes from the Figma prototype. Open [the six wireframes](docs/design/wireframes.html) in a browser. The [API plan](docs/api_endpoints.md) now includes planned inputs, outputs and errors. These are design documents. All required API workflows now work; the web app is still pending.
+The [design plan](docs/design/README.md) records users, required screens, shared styles, phone layouts and changes from the Figma prototype. Open [the six wireframes](docs/design/wireframes.html) in a browser. The [API plan](docs/api_endpoints.md) includes inputs, outputs and errors. These began as design documents. All required API workflows and the six web screens now work (this paragraph was written earlier, when the web app was still pending).
 
-Demo assumptions: INR, Asia/Kolkata date filters, a user-entered booking fare, a selectable demo rider, and a two-hour telemetry freshness limit matching the inherited expiry. Routes and real login are outside this step. Exact booking audit IDs are now implemented. Calendar-day revenue averages and persisted refresh times are now implemented. The original team's commit history is preserved.
+Demo assumptions: INR, Asia/Kolkata date filters, a user-entered booking fare, a selectable demo rider, and a two-hour telemetry freshness limit matching the inherited expiry. Routes and real login are outside this step. Exact booking audit IDs, calendar-day revenue averages and saved refresh times are implemented. The original team's commit history is preserved.

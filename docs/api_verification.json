@@ -47,5 +47,6 @@
     "checkedAt": "2026-10-11T10:57:51.576895+00:00",
     "report": "docs/frontend_verification.json",
     "note": "The six frontend screens and small-dataset browser checks are now complete. The API regression suite again passed all 60 checks."
-  }
+  },
+  "statusNote": "Historical checkpoint. The 'pending' list in this file was true when it was written; see frontend_verification.json and scale_verification.json for later results."
 }
