@@ -48,8 +48,8 @@ The script creates unique `ridesync_verify_*` databases, uses a small sample dat
 - Replaced embedded/prompted connection settings with environment configuration.
 - Fixed seeder top-ups to update the real wallet and fire its audit trigger.
 - Added .env.example, ignored local credentials/dependencies, tests and handover/API documentation; corrected the inherited ERD filename.
-- The booking procedures finish their own database transactions. The API must call them directly, without starting another transaction around them. The moving average currently uses seven rows with revenue; we still need to decide how to handle days with no trips.
-- Demo user switching is planned. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. Currency, route fields and cancellation decisions remain pending design alignment.
+- The booking procedures finish their own database transactions. The API must call them directly, without starting another transaction around them. The current query averages seven revenue rows. The API plan changes this to seven calendar days, including days with no completed trips.
+- Demo user switching is planned. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. The design uses INR and a user-entered fare; route fields and cancellation are outside the required demo.
 
 ## Submission checklist (pending)
 
@@ -3220,3 +3220,10 @@ END OF EXPLAIN STATS
 
 LAST COMMIT HASH:
 61449f3fca545f7e0fe0b0a5a24897a2dbcd108f
+
+
+## Team 10 design step
+
+The [design plan](docs/design/README.md) records users, required screens, shared styles, phone layouts and changes from the Figma prototype. Open [the six wireframes](docs/design/wireframes.html) in a browser. The [API plan](docs/api_endpoints.md) now includes planned inputs, outputs and errors. These are design documents; the API and web app are not built yet.
+
+Demo assumptions: INR, Asia/Kolkata date filters, a user-entered booking fare, a selectable demo rider, and a two-hour telemetry freshness limit matching the inherited expiry. Routes and real login are outside this step. API implementation will need documented SQL changes for exact booking audit IDs, calendar-day revenue averages and persisted refresh times. The original team's commit history is preserved.
