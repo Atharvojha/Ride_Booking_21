@@ -109,7 +109,7 @@ with conn.cursor() as c:
     c.execute('SELECT refresh_mv_vehicle_lifetime_stats()')
     c.execute('SELECT count(*) FROM mv_vehicle_lifetime_stats')
     record('Materialized view refresh', c.fetchone()[0] == 40)
-# Exercise the inherited low-balance top-up path against an actual wallet.
+# Check that topping up a wallet changes its saved balance.
 topup = psycopg2.connect(**PG)
 pgseed = module(ROOT / 'data_generation/postgres_seeder.py')
 pgseed.NUM_TRIPS = 1
@@ -121,7 +121,7 @@ with conn.cursor() as c:
     record('Seeder top-up persists before booking', c.fetchone()[0] == 410)
     c.execute("SELECT count(*) FROM wallet_audit_logs WHERE rider_id=%s AND ((action_type='CREDIT' AND amount_changed=500) OR (action_type='ESCROW_HOLD' AND amount_changed=-100))", (low,))
     record('Seeder top-up and booking both audited', c.fetchone()[0] == 2)
-# Run inherited shell workflows against isolated data, changing ONLY database name.
+# Run the Mongo scripts on the test database.
 for filename in ['02_workflow_geonear.js','03_workflow4_facet.js']:
     path = scratch / filename
     path.write_text((ROOT/'mongo'/filename).read_text().replace('ridesync_mongo', NAME))
@@ -132,15 +132,16 @@ indexes = mdb.VehicleMetadata.index_information()
 record('VehicleMetadata lookup index on correct collection', any(i['key'] == [('vehicle_id',1)] for i in indexes.values()), list(indexes))
 record('Telemetry 2dsphere index', any(i['key'] == [('location','2dsphere')] for i in mdb.TelemetryPings.index_information().values()))
 record('Telemetry TTL 7200 seconds', any(i.get('expireAfterSeconds') == 7200 for i in mdb.TelemetryPings.index_information().values()))
-# Controlled ping verifies distance computation independently of the shell output.
+# A ping at the chosen point should have a distance close to zero.
 mdb.TelemetryPings.insert_one({'vehicle_id':vehicle,'is_available':True,'location':{'type':'Point','coordinates':[78.4867,17.3850]},'created_at':datetime.datetime.now(datetime.timezone.utc)})
 near = list(mdb.TelemetryPings.aggregate([{'$geoNear':{'near':{'type':'Point','coordinates':[78.4867,17.3850]},'key':'location','distanceField':'distance_meters','maxDistance':5000,'spherical':True,'query':{'is_available':True}}},{'$limit':1}]))
 record('Database geoNear at Hyderabad origin', len(near) == 1 and near[0]['distance_meters'] < 1)
-summary = {'source_commit_before_verification': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(), 'database':NAME,'scale':'small deterministic smoke seed; no scale claims','results':results}
+summary = {'source_commit_before_verification': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(), 'database':NAME,'scale':'small sample dataset; large dataset tests are still pending','results':results}
 if os.getenv('VERIFICATION_REPORT'):
     Path(os.environ['VERIFICATION_REPORT']).write_text(json.dumps(summary,indent=2))
 print(json.dumps({'passed':sum(r['passed'] for r in results),'failed':sum(not r['passed'] for r in results)}))
-conn.close();mc.close()
+conn.close()
+mc.close()
 
 scratch_manager.cleanup()
 raise SystemExit(0 if all(r['passed'] for r in results) else 1)

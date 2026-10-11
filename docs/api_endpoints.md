@@ -1,4 +1,4 @@
-# Team 10 API outline — proposed, not implemented
+# Team 10 API plan — not built yet
 
 The browser talks only to the API. The API calls PostgreSQL procedures/views and MongoDB aggregations. Demo rider switching is sufficient; real login is outside the required scope. Validate IDs, coordinates, fares, filters and status transitions on the server.
 
@@ -23,12 +23,12 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 
 ## Response rules
 
-- Lists default to 25 rows; cap pageSize at 100. Filter and paginate in the database. Use stable ordering with ID tie-breakers. Actor selectors also search/paginate; do not download every rider.
-- Business failures return `{error: {code, message}}`: e.g. INSUFFICIENT_BALANCE, ACTIVE_TRIP_EXISTS, INVALID_INPUT, NOT_FOUND. API code maps procedure output statuses/constraint names to friendly messages and does not expose raw database errors.
-- Stored procedures commit internally. Use a dedicated top-level CALL on an autocommit connection. A returned FAILED status is a failure even when the driver does not throw. Verify completion state because the inherited completion procedure uses notices on failure.
-- Reject duplicate submission while booking is pending. A transport failure can have an uncertain result; refetch the rider's active trip/balance before offering retry. Test concurrent bookings before final submission.
+- Lists default to 25 rows; cap pageSize at 100. Filter and paginate in the database. Keep the sort order consistent. Use the ID to sort records with the same value. The rider dropdown should also search and load one page at a time.
+- Booking errors return `{error: {code, message}}`: e.g. INSUFFICIENT_BALANCE, ACTIVE_TRIP_EXISTS, INVALID_INPUT, NOT_FOUND. API code maps procedure output statuses/constraint names to friendly messages and does not expose raw database errors.
+- The stored procedures finish their own transactions. Call them directly without starting another transaction around them (autocommit). A returned FAILED status is a failure even when the driver does not throw. Verify completion state because the inherited completion procedure uses notices on failure.
+- Reject duplicate submission while booking is pending. If the connection fails, the booking may still have succeeded. Check the rider's trip and balance before allowing a retry. Test bookings made at the same time before submission.
 - Resolve the calendar-day moving-average requirement before implementing the chart. Keep DENSE_RANK in SQL.
-- Nearby search must avoid returning multiple historical pings as different vehicles. Define freshness/latest-ping behavior explicitly and preserve geoNear as the source of distance. Polling every 5–10 seconds is a proposed UI choice.
+- Nearby search must avoid returning multiple historical pings as different vehicles. Decide how old a location update can be and which update counts as the latest. Use geoNear to calculate distance. Polling every 5–10 seconds is a proposed UI choice.
 - Use GeoJSON coordinate order [longitude, latitude]. Default demo origin matches the Hyderabad seeder; no real user location is needed.
 - Wallet running balances come from stored balance_after; a filtered period must not start its balance calculation at zero.
-- Currency is not defined by the inherited schema. Proposed assumption: INR, to be recorded in the design/README before implementation. No route estimation service is included in this contract.
+- Currency is not defined by the inherited schema. Proposed assumption: INR, to be recorded in the design/README before implementation. This plan does not include a route or distance estimation service.

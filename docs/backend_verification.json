@@ -1,6 +1,6 @@
 {
   "database": "ridesync_verify_20261011_103515_052886",
-  "scale": "small deterministic smoke seed; no scale claims",
+  "scale": "small sample dataset; large dataset tests are still pending",
   "results": [
     {
       "check": "SQL setup: 01_schema_ddl.sql",

@@ -1,8 +1,8 @@
-# Team 10 — Assignment 2 backend checkpoint
+# Team 10 — Assignment 2 setup
 
-Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride_Booking_21). Inherited source: [amaan070/Ride_Booking_21](https://github.com/amaan070/Ride_Booking_21), baseline `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`. All 23 inherited commits are preserved.
+Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride_Booking_21). Inherited source: [amaan070/Ride_Booking_21](https://github.com/amaan070/Ride_Booking_21), starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`. All 23 inherited commits are preserved.
 
-Status: backend audit and minimal fixes are complete. The web frontend and API are not implemented yet. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [proposed API contract](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
+We checked the database scripts and fixed the problems we found. The web frontend and API are not implemented yet. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [planned API endpoints](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
 
 ## Current setup (macOS/Linux)
 
@@ -31,7 +31,7 @@ mongosh "$MONGO_URI" --quiet --file mongo/03_workflow4_facet.js
 
 Use a new database for initial setup; schema SQL is not a reset script. Stop if a step reports an error. Both databases must be running before the PostgreSQL seeder, because it also writes VehicleMetadata. Seeders append data; rerunning them is not a reset. Refresh the materialized view after seeding. Telemetry expires after two hours; regenerate pings for later map demonstrations.
 
-`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. Scale and concurrent-load tests have not yet been run on this fork.
+`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. We still need to test a large dataset and bookings made at the same time.
 
 ## Backend checks
 
@@ -39,7 +39,7 @@ Use a new database for initial setup; schema SQL is not a reset script. Stop if 
 python tests/backend_smoke.py
 ```
 
-The script creates unique `ridesync_verify_*` databases, uses a small deterministic seed and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. Test databases are retained for inspection. It exits nonzero if any check fails. The checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0.
+The script creates unique `ridesync_verify_*` databases, uses a small sample dataset and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. The test databases are kept so we can inspect the results. It exits nonzero if any check fails. The checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0.
 
 ## Changes and assumptions
 
@@ -48,7 +48,7 @@ The script creates unique `ridesync_verify_*` databases, uses a small determinis
 - Replaced embedded/prompted connection settings with environment configuration.
 - Fixed seeder top-ups to update the real wallet and fire its audit trigger.
 - Added .env.example, ignored local credentials/dependencies, tests and handover/API documentation; corrected the inherited ERD filename.
-- API procedures require top-level autocommit calls. The current moving average covers seven revenue rows; calendar-day behavior remains to be resolved.
+- The booking procedures finish their own database transactions. The API must call them directly, without starting another transaction around them. The moving average currently uses seven rows with revenue; we still need to decide how to handle days with no trips.
 - Demo user switching is planned. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. Currency, route fields and cancellation decisions remain pending design alignment.
 
 ## Submission checklist (pending)
@@ -61,7 +61,7 @@ Team members will be added to the contribution table when details are provided; 
 
 # Inherited Assignment 1 documentation
 
-The following original documentation is retained for attribution and background. The Team 10 setup and change log above supersede its connection/seeding instructions.
+The following original documentation is retained for attribution and background. Use the Team 10 setup steps above when running the project.
 
 # RideSync – Ride Booking Database System
 
