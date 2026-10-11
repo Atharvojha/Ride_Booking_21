@@ -4,7 +4,7 @@ Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride
 
 We checked the database scripts and fixed the problems we found. The API now covers browsing, booking, trip status changes, wallet history, revenue, nearby vehicles and reviews. The web frontend is still pending. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [API endpoints and remaining plan](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
 
-Current assignment work: [assignment2/backend-audit](https://github.com/Atharvojha/Ride_Booking_21/tree/assignment2/backend-audit). The pull request is still separate from main.
+Current assignment work: [assignment2/backend-audit](https://github.com/Atharvojha/Ride_Booking_21/tree/assignment2/backend-audit). The earlier backend, design and booking work is in main. The latest workflow API changes are on this branch for review.
 
 ## Current setup (macOS/Linux)
 
