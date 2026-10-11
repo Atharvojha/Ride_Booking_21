@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-10-11T10:57:51.576895+00:00",
+  "step": "Six connected frontend screens",
+  "checks": {
+    "unitTests": {
+      "passed": 23,
+      "failed": 0
+    },
+    "browserTests": {
+      "passed": 9,
+      "failed": 0
+    },
+    "apiRegression": {
+      "passed": 60,
+      "failed": 0,
+      "warning": "Existing Starlette TestClient dependency warning."
+    },
+    "productionBuild": "passed"
+  },
+  "browserScope": "Chrome with a real temporary PostgreSQL and MongoDB API on ports 8001 and 5174. Public map tiles are blocked.",
+  "realDatabaseCases": [
+    "Server pagination/search and details",
+    "Booking with exact saved before/after balances and trigger audit entry",
+    "Active-trip rejection, completion and a second booking",
+    "Low-balance rejection without a debit and inactive vehicle exclusion",
+    "Revenue charts, materialized-view refresh, fresh nearby pings and review facets/metadata",
+    "A real successful write with its reply deliberately lost",
+    "Duplicate clicks sending only one real booking",
+    "Phone navigation, long names, large wallet balance and horizontal table scrolling"
+  ],
+  "interceptedCases": [
+    "Lost booking reply after the real write",
+    "Read/refresh service failures",
+    "Failed recovery recheck",
+    "Map tile failure"
+  ],
+  "independentReview": "The verifier reviewed the final source and all six desktop screens, reran all 23 unit tests, all nine browser tests and the build, then reran the two affected browser cases and build after the final saved-balance and phone-layout fixes.",
+  "cleanup": "No ridesync_browser_test_* databases remained after verification. The demo database was not used for test writes.",
+  "screenshots": "docs/design/screenshots: temporary test records, six desktop screens and a 390 px phone layout.",
+  "testedWith": {
+    "node": "26.8.2",
+    "python": "3.13.1",
+    "browser": "Google Chrome"
+  },
+  "pending": [
+    "Full-scale dataset checks",
+    "Fresh telemetry for the later live map demo",
+    "Demo video and viva preparation",
+    "Actual team contribution details and final submission ZIP"
+  ]
+}

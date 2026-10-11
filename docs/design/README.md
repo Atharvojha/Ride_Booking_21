@@ -1,6 +1,6 @@
 # RideSync design plan
 
-Team 10, Assignment 2. These are the planned screens. All required API routes now work; the web app is still to be built.
+Team 10, Assignment 2. These wireframes guided the six working screens in web/. All required API routes are connected.
 
 ## Design reference
 
@@ -53,27 +53,31 @@ Trip details offer REQUESTED -> IN TRANSIT -> COMPLETED. Completion calls sp_rel
 
 Keep the prototype's navy sidebar, blue main buttons, pale page background and white cards. Planned colours: sidebar #17233f, action #3567e8, background #f4f6fb, text #172033, border #dce2eb, success #18794e, error #b42318. These are chosen values, not extracted Figma tokens.
 
-Use the system font at 16 px, clear headings, spacing in multiples of 8 px, and a visible keyboard focus outline. Share buttons, labelled inputs, searchable selectors, status badges, tables, page controls, detail drawers, charts and feedback messages. Show status text alongside colour. Keep database query names in documentation; screen labels should explain the result.
+Use the system font at 16 px, clear headings, spacing in multiples of 8 px, and a visible keyboard focus outline. Share buttons, labelled inputs, searchable selectors, status badges, tables, page controls, detail dialogs, charts and feedback messages. Show status text alongside colour. Keep database query names in documentation; screen labels should explain the result.
 
 ## Loading, empty and error cases
 
 | Screen | Loading | Empty | Error |
 |---|---|---|---|
-| Browse | Table placeholders; keep filters visible | No records match; clear filters | Message and retry; keep chosen filters |
+| Browse | Loading message; keep filters visible | No records match; clear filters | Message and retry; keep chosen filters |
 | Booking | Disable submit and show Booking... | No active vehicles; explain and retry list | Field message or booking error; preserve inputs |
-| Wallet | Table placeholders | No wallet changes in these dates | Message and retry; no invented balance |
-| Analytics | Chart placeholder; disable refresh while running | No completed revenue; chart values zero | Keep last good totals with a stale label and retry |
-| Nearby | Map placeholder and loading list | No fresh available vehicles within 5 km | Keep last result marked stale; show last successful update and retry |
-| Reviews | Chart placeholders | Zero counts, average shown as No ratings; no metadata message | Separate review/metadata errors with retry |
+| Wallet | Loading message | No wallet changes in these dates | Message and retry; no invented balance |
+| Analytics | Loading message; disable refresh while running | No completed revenue; chart values zero | Keep last good totals with a stale label and retry |
+| Nearby | Map with a loading message | No fresh available vehicles within 5 km | Keep last result marked stale; show last successful update and retry |
+| Reviews | Loading message | Zero counts, average shown as No ratings; no metadata message | Separate review/metadata errors with retry |
 
 Every list uses server-side search and pagination, default 25 and maximum 100 rows. The API does the filtering before sending a page. Details are loaded on request.
 
 ## Laptop and phone layout
 
-At laptop width, use a sidebar, header and two-column booking/map layouts. Below 760 px, use a menu button, put the rider selector below the title, and stack cards, map and results. Keep tables in a labelled horizontal scroll area. Detail drawers fill the phone width. Controls should have a 44 px minimum touch height. Keyboard users can move between fields, open details and close them with Escape.
+At laptop width, use a sidebar, header and two-column booking/map layouts. Below 760 px, use a menu button, put the rider selector below the title, and stack cards, map and results. Keep tables in a labelled horizontal scroll area. Detail dialogs fill the phone width. Controls should have a 44 px minimum touch height. Keyboard users can move between fields, open details and close them with Escape.
 
 ## Build choices and checks still needed
 
-Planned stack: React with [Vite](https://vite.dev/guide/) for the browser, ordinary CSS for shared styles, [FastAPI](https://fastapi.tiangolo.com/) for a small Python API, a chart library for revenue/reviews, and [Leaflet](https://leafletjs.com/) for the map. Python fits the existing seed scripts. Leaflet can show MongoDB results without a paid map SDK; choose and document a tile provider's usage terms before implementation. FastAPI is used by the working API. The frontend libraries will be added when we build the web app.
+The app uses React with [Vite](https://vite.dev/guide/), ordinary CSS, [FastAPI](https://fastapi.tiangolo.com/) and [Leaflet](https://leafletjs.com/). React shares the forms and tables; Vite runs the browser build; Python fits the inherited scripts. Small SVG and CSS charts show the API values without another chart package. Leaflet displays the MongoDB coordinates with OpenStreetMap tiles.
 
-Before submission, test a successful booking, low balance, an active trip, inactive vehicle, status changes, simultaneous bookings, a lost reply, wallet date filters, seven calendar days with gaps, tied rankings, refresh failures, stale/newer-unavailable pings, empty reviews, pagination and phone layouts. API-level cases are covered by the 60 tests in tests/test_api.py. Lost-reply handling in the web form, browser checks and phone layouts still need testing after the frontend is built. Everyone must be able to explain the stored procedures, trigger, SQL query and MongoDB pipelines for the viva.
+The map follows the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/): visible attribution, normal browser caching, no bulk downloads, offline maps or prefetch. Automated checks block public tiles and test the coordinate results instead. An internet connection is needed for the basemap; tile failures leave the result list usable. This local assignment demo is not a production map service.
+
+[Screen captures](screenshots/) show the implemented desktop screens and a 390 px phone layout. These captures use temporary browser-test records, not real accounts. The nearby capture deliberately has blocked tiles; the coordinates, markers and distance list are still tested.
+
+Before submission, test a successful booking, low balance, an active trip, inactive vehicle, status changes, simultaneous bookings, a lost reply, wallet date filters, seven calendar days with gaps, tied rankings, refresh failures, stale/newer-unavailable pings, empty reviews, pagination and phone layouts. API-level cases are covered by the 60 tests in tests/test_api.py. Lost-reply handling, repeated clicks, real bookings, phone layouts and read failures are checked in web/tests/. The frontend test report separates real database cases from intercepted failure cases. Full-scale checks remain pending. Everyone must be able to explain the stored procedures, trigger, SQL query and MongoDB pipelines for the viva.
