@@ -6,23 +6,24 @@ import psycopg2.extras as extras
 from faker import Faker
 from pymongo import MongoClient
 
-# ---------- CONFIG: put your real Postgres password below ----------
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 PG_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "ridesync_db",
-    "user": "postgres",
-    "password": "1234",   # <-- make sure this matches what worked in psql
+    "host": os.getenv("PGHOST", "localhost"),
+    "port": int(os.getenv("PGPORT", "5432")),
+    "dbname": os.getenv("PGDATABASE", "ridesync_db"),
+    "user": os.getenv("PGUSER", "postgres"),
+    "password": os.getenv("PGPASSWORD", ""),
 }
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_DB = os.getenv("MONGO_DB", "ridesync_mongo")
 
-# ---------- CONFIG: MongoDB connection ----------
-MONGO_URI = "mongodb://localhost:27017"
-MONGO_DB = "ridesync_mongo"
-
-
-NUM_RIDERS = 100000
-NUM_VEHICLES = 40000
-NUM_TRIPS = 50000
+NUM_RIDERS = int(os.getenv("NUM_RIDERS", "100000"))
+NUM_VEHICLES = int(os.getenv("NUM_VEHICLES", "40000"))
+NUM_TRIPS = int(os.getenv("NUM_TRIPS", "50000"))
 DAYS_SPREAD = 60
 
 fake = Faker("en_IN")   # Indian names/locale for realism
@@ -252,7 +253,11 @@ def seed_trips(conn, rider_balances, vehicles):
             # Top up anyone whose balance has drifted too low, so the
             # fare clamp below never has to deal with near-zero funds.
             if eligible_riders[rider_id] < 30:
-                eligible_riders[rider_id] += 500.00  # simple top-up
+                cur.execute(
+                    "UPDATE riders SET wallet_balance = wallet_balance + 500 WHERE id = %s RETURNING wallet_balance",
+                    (rider_id,),
+                )
+                eligible_riders[rider_id] = float(cur.fetchone()[0])
 
             vehicle = random.choice(vehicles)
             fare = fare_for_class(vehicle["class"])
