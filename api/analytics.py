@@ -24,6 +24,29 @@ def chart_dates(start, end):
         raise ApiError(422, 'INVALID_INPUT', 'Choose valid dates covering at most 90 days.')
 
 
+def days_for_page(first, last, rows_per_day, page, page_size):
+    """The days needed for one page of rankings, plus how many of their rows to skip.
+
+    Rankings are listed newest day first and every day has one row per vehicle, so a page
+    usually covers one day or the border between two (more days if the fleet is smaller than
+    the page). Asking the SQL function for only those days avoids ranking the whole fleet for
+    all 90 days. Ranks are still worked out across the whole fleet for each day, because the
+    function does that for every day it returns.
+    """
+    start = (page - 1) * page_size
+    newest = start // rows_per_day
+    oldest = min((start + page_size - 1) // rows_per_day, (last - first).days)
+    return last - timedelta(days=oldest), last - timedelta(days=newest), start - newest * rows_per_day
+
+
+def ranking_rows(conn, low, high, vehicle_id, page_size, skip):
+    """One page of ranking rows for the days low..high, newest day first."""
+    where, values = ('WHERE vehicle_id=%s', [vehicle_id]) if vehicle_id else ('', [])
+    return many(conn, 'SELECT * FROM api_vehicle_revenue(%s,%s) ' + where
+                + ' ORDER BY revenue_date DESC,revenue_rank,vehicle_id LIMIT %s OFFSET %s',
+                [low, high, *values, page_size, skip])
+
+
 def revenue_row(row):
     return {'vehicleId': str(row['vehicle_id']), 'licensePlate': row['license_plate'],
             'date': row['revenue_date'].isoformat(), 'dailyRevenue': money(row['daily_revenue']),
@@ -41,15 +64,18 @@ def revenue(vehicleId: UUID | None = None, from_date: FromDate = None,
         else:
             choice = one(conn, 'SELECT id FROM vehicles WHERE is_active ORDER BY license_plate,id LIMIT 1')
             selected = choice['id'] if choice else None
-        conditions = ['vehicle_id=%s'] if vehicleId else []
-        values = [first, last, vehicleId] if vehicleId else [first, last]
-        result = listing(conn, 'api_vehicle_revenue(%s,%s)', '*', conditions, values,
-                         'revenue_date DESC,revenue_rank,vehicle_id', page, pageSize, revenue_row)
+        # The function returns one row per vehicle per day, so the total is known without running it.
+        rows_per_day = 1 if vehicleId else one(conn, 'SELECT COUNT(*) AS total FROM vehicles')['total']
+        total = rows_per_day * ((last - first).days + 1)
+        rankings = []
+        if (page - 1) * pageSize < total:
+            low, high, skip = days_for_page(first, last, rows_per_day, page, pageSize)
+            rankings = [revenue_row(row) for row in ranking_rows(conn, low, high, vehicleId, pageSize, skip)]
         series = many(conn, 'SELECT * FROM api_vehicle_revenue(%s,%s) WHERE vehicle_id=%s ORDER BY revenue_date',
                       [first, last, selected]) if selected else []
         return {'series': [{key: value for key, value in revenue_row(row).items()
                             if key not in ('licensePlate', 'rank')} for row in series],
-                'rankings': result['items'], 'page': page, 'pageSize': pageSize, 'total': result['total'],
+                'rankings': rankings, 'page': page, 'pageSize': pageSize, 'total': total,
                 'from': first.isoformat(), 'to': last.isoformat(), 'timezone': 'Asia/Kolkata',
                 'selectedVehicleId': str(selected) if selected else None}
 

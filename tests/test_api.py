@@ -1,7 +1,7 @@
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from threading import Barrier, Event
@@ -14,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pymongo import MongoClient
 
+from api.analytics import days_for_page
 from api.main import app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -351,6 +352,55 @@ def test_calendar_revenue_and_whole_fleet_ranks(browser, records, database):
     assert browser.get('/api/analytics/revenue', params=params).json()['rankings'][0]['rank'] == 2
     params['page'] = 4
     assert browser.get('/api/analytics/revenue', params=params).json()['rankings'] == []
+
+
+def test_days_for_page_matches_a_row_by_row_list():
+    # No database: list every row (newest day first, `per_day` rows a day) and check the days chosen for each page.
+    first, last = date(2026, 9, 1), date(2026, 9, 12)
+    days = (last - first).days + 1
+    for per_day in (1, 2, 5, 7, 40):
+        rows = [(last - timedelta(days=index // per_day), index % per_day) for index in range(days * per_day)]
+        for page_size in (1, 3, 10, 25, 100):
+            for page in range(1, len(rows) // page_size + 2):
+                start = (page - 1) * page_size
+                wanted = rows[start:start + page_size]
+                if not wanted:
+                    continue
+                low, high, skip = days_for_page(first, last, per_day, page, page_size)
+                available = [row for row in rows if low <= row[0] <= high]
+                assert available[skip:skip + page_size] == wanted
+                assert low >= first and high <= last
+
+
+def walk_revenue_pages(browser, params, page_size):
+    seen, page = [], 1
+    while True:
+        body = browser.get('/api/analytics/revenue', params={**params, 'page': page, 'pageSize': page_size}).json()
+        if not body['rankings']:
+            return seen, body['total']
+        seen += [(row['vehicleId'], row['date'], row['rank']) for row in body['rankings']]
+        page += 1
+
+
+def test_revenue_pages_match_the_whole_list_across_day_borders(browser, records, database):
+    # Make sure the fleet is big enough, whatever other tests left behind.
+    with database[0].cursor() as cur:
+        for _ in range(10):
+            vehicle_id = str(uuid4())
+            cur.execute("INSERT INTO vehicles(id,license_plate,class) VALUES(%s,%s,'Mini')", [vehicle_id, 'B' + vehicle_id[:12]])
+        cur.execute('SELECT COUNT(*) FROM vehicles')
+        fleet = cur.fetchone()[0]
+        params = {'from': '2026-09-07', 'to': '2026-09-09'}
+        cur.execute('SELECT vehicle_id::text, revenue_date::text, revenue_rank FROM api_vehicle_revenue(%s,%s) '
+                    'ORDER BY revenue_date DESC, revenue_rank, vehicle_id', [params['from'], params['to']])
+        expected = cur.fetchall()
+    # A page size that does not divide the fleet makes pages hold the end of one day and the
+    # start of the next. A page larger than the fleet covers all three days at once.
+    border_size = next(size for size in (7, 6, 5, 4, 3) if fleet % size)
+    for page_size in (border_size, 100):
+        seen, total = walk_revenue_pages(browser, params, page_size)
+        assert total == len(expected) == fleet * 3
+        assert seen == expected
 
 
 def test_revenue_uses_local_days(browser, records, database):
