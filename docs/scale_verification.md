@@ -96,7 +96,7 @@ Median of three runs (five for Nearby and Reviews) through the real API, on a wa
 | Lifetime summary, 100 rows | 0.02 s | 17 KB |
 | Refresh the materialized view | 0.29 s | small |
 | Revenue, default 30 days (copy) | **1.55 s** (was 3.72 s) | 8 KB |
-| Revenue, maximum 90 days (copy) | **4.13 s** (was 10.58 s) | 15 KB |
+| Revenue, maximum 90 days (copy) | **4.12 s** (was 10.58 s) | 15 KB |
 | Nearby, limit 50 | 1.30 s | 10 KB |
 | Nearby, limit 1 | 1.30 s | under 1 KB |
 | Review summary | 0.04 s | under 1 KB |
@@ -118,7 +118,7 @@ Change in `api/analytics.py`:
 - The ranking list is newest day first, and every day has one row per vehicle, so a page covers one day or the border between two. The API now asks the function only for those days. The function still ranks the whole fleet for each day it returns.
 - The chart for the selected vehicle still needs every day in the range, so it still runs the function once for the full range.
 
-Result: 30 days from 3.72 s to 1.55 s, 90 days from 10.58 s to 4.13 s. Two new API tests cover this: one needs no database and checks the days chosen for every page of several page sizes against a row-by-row list; the other walks every page of a three-day range, with a page size that does not divide the fleet (so pages straddle two days) and with a page larger than the fleet, and compares the result with the whole SQL list. We confirmed the tests fail when the page offset, the last day or the day count is deliberately broken. The scale check also compares a page that crosses a day border with the Python reference.
+Result: 30 days from 3.72 s to 1.55 s, 90 days from 10.58 s to 4.12 s. Two new API tests cover this: one needs no database and checks the days chosen for every page of several page sizes against a row-by-row list; the other walks every page of a three-day range, with a page size that does not divide the fleet (so pages straddle two days) and with a page larger than the fleet, and compares the result with the whole SQL list. We confirmed the tests fail when the page offset, the last day or the day count is deliberately broken. The scale check also compares a page that crosses a day border with the Python reference.
 
 **What is still slow:** the chart query for the 90-day maximum needs the whole-fleet ranking, about 4 s. Its plan sorts 3.6 million rows and writes 176 MB to disk. A production system would store daily ranks in a table. We did not build that.
 
