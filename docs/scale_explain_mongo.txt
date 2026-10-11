@@ -1,0 +1,30 @@
+MongoDB 7.0.43, database ridesync_scale_20261011, taken 2026-10-11T11:39:22.491Z
+
+== 1. Nearby vehicles: whole API pipeline (geoNear, then latest-ping lookup for every candidate)
+plan: FETCH <- GEO_NEAR_2DSPHERE(location_2dsphere) <- FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere),FETCH <- IXSCAN(location_2dsphere)
+keysExamined=53444 docsExamined=90316 nReturned=27713 executionTimeMillis=1371
+later stages: $lookup(27713 out, 1365 ms) -> $match(2135 out, 1365 ms) -> $sort(2135 out, 1365 ms) -> $project(2135 out, 1367 ms)
+
+== 2. Latest ping of one vehicle (what each $lookup does; index vehicle_id, created_at desc, _id desc)
+plan: LIMIT <- FETCH <- IXSCAN(vehicle_id_1_created_at_-1__id_-1)
+keysExamined=1 docsExamined=1 nReturned=1 executionTimeMillis=0
+
+== 3. Reviews of one vehicle, newest first, one page (index vehicle_id, created_at desc, _id desc)
+plan: LIMIT <- FETCH <- IXSCAN(vehicle_id_1_created_at_-1__id_-1)
+keysExamined=7 docsExamined=7 nReturned=7 executionTimeMillis=0
+
+== 4. Reviews in a date range, newest first (index created_at desc, _id desc)
+plan: LIMIT <- FETCH <- IXSCAN(created_at_-1__id_-1)
+keysExamined=25 docsExamined=25 nReturned=25 executionTimeMillis=0
+
+== 5. Review summary, all reviews, $facet
+plan: PROJECTION_SIMPLE <- COLLSCAN
+keysExamined=0 docsExamined=28163 nReturned=28163 executionTimeMillis=37
+later stages: $facet(1 out, 25 ms)
+
+== 6. Vehicle metadata for one vehicle (index vehicle_id)
+plan: FETCH <- IXSCAN(vehicle_id_1)
+keysExamined=1 docsExamined=1 nReturned=1 executionTimeMillis=0
+
+Indexes on TelemetryPings: _id_, location_2dsphere, created_at_1, vehicle_id_1_created_at_-1__id_-1
+TTL index: created_at_1 expireAfterSeconds=7200

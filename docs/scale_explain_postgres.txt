@@ -1,0 +1,218 @@
+PostgreSQL EXPLAIN (ANALYZE, BUFFERS) plans on the seeded scale database
+Database: ridesync_scale_20261011, PostgreSQL 17.11 (Homebrew), shared_buffers=128MB, work_mem=4MB
+Taken 2026-10-11T11:38:33Z. Timings are from a warm local machine and are for comparison, not guarantees.
+
+== 1. Rider search (browse screen): name or id contains text, first page
+Limit (actual time=98.559..98.561 rows=25 loops=1)
+  Buffers: shared hit=873
+  ->  Sort (actual time=98.558..98.559 rows=25 loops=1)
+        Sort Key: name, id
+        Sort Method: top-N heapsort  Memory: 28kB
+        Buffers: shared hit=873
+        ->  Seq Scan on riders (actual time=0.206..98.328 rows=178 loops=1)
+              Filter: (((name)::text ~~* '%Acharya%'::text) OR ((id)::text ~~* '%Acharya%'::text))
+              Rows Removed by Filter: 99822
+              Buffers: shared hit=867
+Planning:
+  Buffers: shared hit=86
+Planning Time: 0.611 ms
+Execution Time: 98.590 ms
+
+== 2. Trip list, newest first, with rider and vehicle names (browse screen)
+Limit (actual time=42.766..42.773 rows=100 loops=1)
+  Buffers: shared hit=1927
+  ->  Sort (actual time=42.765..42.769 rows=100 loops=1)
+        Sort Key: t.created_at DESC, t.id
+        Sort Method: top-N heapsort  Memory: 52kB
+        Buffers: shared hit=1927
+        ->  Hash Join (actual time=19.294..36.095 rows=47404 loops=1)
+              Hash Cond: (t.vehicle_id = v.id)
+              Buffers: shared hit=1924
+              ->  Hash Join (actual time=13.419..24.009 rows=47404 loops=1)
+                    Hash Cond: (t.rider_id = r.id)
+                    Buffers: shared hit=1587
+                    ->  Seq Scan on trips t (actual time=0.014..3.875 rows=47404 loops=1)
+                          Filter: ((status)::text = 'COMPLETED'::text)
+                          Rows Removed by Filter: 2596
+                          Buffers: shared hit=720
+                    ->  Hash (actual time=13.263..13.263 rows=100000 loops=1)
+                          Buckets: 131072  Batches: 1  Memory Usage: 7032kB
+                          Buffers: shared hit=867
+                          ->  Seq Scan on riders r (actual time=0.003..5.288 rows=100000 loops=1)
+                                Buffers: shared hit=867
+              ->  Hash (actual time=5.828..5.828 rows=40000 loops=1)
+                    Buckets: 65536  Batches: 1  Memory Usage: 2930kB
+                    Buffers: shared hit=337
+                    ->  Seq Scan on vehicles v (actual time=0.005..2.707 rows=40000 loops=1)
+                          Buffers: shared hit=337
+Planning:
+  Buffers: shared hit=206
+Planning Time: 0.607 ms
+Execution Time: 42.821 ms
+
+== 3. Trips of one rider (uses idx_trips_rider_id)
+Limit (actual time=0.025..0.026 rows=2 loops=1)
+  Buffers: shared hit=18
+  ->  Sort (actual time=0.025..0.025 rows=2 loops=1)
+        Sort Key: t.created_at DESC, t.id
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=18
+        ->  Nested Loop (actual time=0.017..0.022 rows=2 loops=1)
+              Buffers: shared hit=18
+              ->  Nested Loop (actual time=0.011..0.013 rows=2 loops=1)
+                    Buffers: shared hit=12
+                    ->  Index Scan using idx_trips_rider_id on trips t (actual time=0.003..0.004 rows=2 loops=1)
+                          Index Cond: (rider_id = '000d0dcb-1395-41f0-9d2f-7330ffb21dd7'::uuid)
+                          Buffers: shared hit=4
+                    ->  Index Scan using riders_pkey on riders r (actual time=0.004..0.004 rows=1 loops=2)
+                          Index Cond: (id = '000d0dcb-1395-41f0-9d2f-7330ffb21dd7'::uuid)
+                          Buffers: shared hit=8
+              ->  Index Scan using vehicles_pkey on vehicles v (actual time=0.004..0.004 rows=1 loops=2)
+                    Index Cond: (id = t.vehicle_id)
+                    Buffers: shared hit=6
+Planning:
+  Buffers: shared hit=12
+Planning Time: 0.112 ms
+Execution Time: 0.036 ms
+
+== 4. Wallet audit of one rider with a date filter (uses idx_wallet_audit_logs_rider_id)
+Limit (actual time=0.023..0.023 rows=4 loops=1)
+  Buffers: shared hit=5
+  ->  Sort (actual time=0.023..0.023 rows=4 loops=1)
+        Sort Key: "timestamp", id
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=5
+        ->  Bitmap Heap Scan on wallet_audit_logs (actual time=0.019..0.021 rows=4 loops=1)
+              Recheck Cond: (rider_id = '000d0dcb-1395-41f0-9d2f-7330ffb21dd7'::uuid)
+              Filter: (("timestamp" >= '2026-10-01 00:00:00+05:30'::timestamp with time zone) AND ("timestamp" < '2026-10-13 00:00:00+05:30'::timestamp with time zone))
+              Heap Blocks: exact=2
+              Buffers: shared hit=5
+              ->  Bitmap Index Scan on idx_wallet_audit_logs_rider_id (actual time=0.012..0.012 rows=4 loops=1)
+                    Index Cond: (rider_id = '000d0dcb-1395-41f0-9d2f-7330ffb21dd7'::uuid)
+                    Buffers: shared hit=3
+Planning:
+  Buffers: shared hit=55
+Planning Time: 0.188 ms
+Execution Time: 0.029 ms
+
+== 5. Lifetime totals page from the materialized view
+Limit (actual time=9.917..9.923 rows=100 loops=1)
+  Buffers: shared hit=417
+  ->  Sort (actual time=9.917..9.919 rows=100 loops=1)
+        Sort Key: license_plate, vehicle_id
+        Sort Method: top-N heapsort  Memory: 48kB
+        Buffers: shared hit=417
+        ->  Seq Scan on mv_vehicle_lifetime_stats (actual time=0.008..1.795 rows=40000 loops=1)
+              Buffers: shared hit=417
+Planning:
+  Buffers: shared hit=37
+Planning Time: 0.451 ms
+Execution Time: 9.928 ms
+
+== 6. Revenue ranking page: ONE day from api_vehicle_revenue (what the API now asks for)
+Limit (actual time=248.729..248.732 rows=25 loops=1)
+  Buffers: shared hit=40832
+  ->  Sort (actual time=248.729..248.730 rows=25 loops=1)
+        Sort Key: r.day DESC, r.rank, r.id
+        Sort Method: top-N heapsort  Memory: 28kB
+        Buffers: shared hit=40832
+        ->  Subquery Scan on r (actual time=229.834..242.575 rows=40000 loops=1)
+              Buffers: shared hit=40826
+              ->  WindowAgg (actual time=229.833..239.377 rows=40000 loops=1)
+                    Buffers: shared hit=40826
+                    ->  Sort (actual time=229.831..230.793 rows=40000 loops=1)
+                          Sort Key: a.day, a.average DESC
+                          Sort Method: quicksort  Memory: 3666kB
+                          Buffers: shared hit=40826
+                          ->  Subquery Scan on a (actual time=18.254..213.046 rows=40000 loops=1)
+                                Filter: (a.day >= '2026-10-11'::date)
+                                Rows Removed by Filter: 240000
+                                Buffers: shared hit=40823
+                                ->  WindowAgg (actual time=18.251..204.818 rows=280000 loops=1)
+                                      Buffers: shared hit=40823
+                                      ->  Incremental Sort (actual time=18.245..124.664 rows=280000 loops=1)
+                                            Sort Key: v.id, (('2026-10-05'::date + n.n))
+                                            Presorted Key: v.id
+                                            Full-sort Groups: 8000  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+                                            Buffers: shared hit=40823
+                                            ->  Merge Left Join (actual time=18.222..92.077 rows=280000 loops=1)
+                                                  Merge Cond: (v.id = t.vehicle_id)
+                                                  Join Filter: ((((t.created_at AT TIME ZONE 'Asia/Kolkata'::text))::date) = ('2026-10-05'::date + n.n))
+                                                  Rows Removed by Join Filter: 159186
+                                                  Buffers: shared hit=40823
+                                                  ->  Nested Loop (actual time=0.011..30.077 rows=280000 loops=1)
+                                                        Buffers: shared hit=40103
+                                                        ->  Index Scan using vehicles_pkey on vehicles v (actual time=0.006..7.876 rows=40000 loops=1)
+                                                              Buffers: shared hit=40103
+                                                        ->  Function Scan on generate_series n (actual time=0.000..0.000 rows=7 loops=40000)
+                                                  ->  Materialize (actual time=18.208..35.370 rows=185711 loops=1)
+                                                        Buffers: shared hit=720
+                                                        ->  GroupAggregate (actual time=18.206..28.656 rows=26531 loops=1)
+                                                              Group Key: t.vehicle_id, (((t.created_at AT TIME ZONE 'Asia/Kolkata'::text))::date)
+                                                              Buffers: shared hit=720
+                                                              ->  Sort (actual time=18.201..19.854 rows=47404 loops=1)
+                                                                    Sort Key: t.vehicle_id, (((t.created_at AT TIME ZONE 'Asia/Kolkata'::text))::date)
+                                                                    Sort Method: quicksort  Memory: 3588kB
+                                                                    Buffers: shared hit=720
+                                                                    ->  Seq Scan on trips t (actual time=0.006..12.122 rows=47404 loops=1)
+                                                                          Filter: ((created_at >= '2026-10-05 00:00:00+05:30'::timestamp with time zone) AND (created_at < '2026-10-12 00:00:00+05:30'::timestamp with time zone) AND ((status)::text = 'COMPLETED'::text))
+                                                                          Rows Removed by Filter: 2596
+                                                                          Buffers: shared hit=720
+Planning:
+  Buffers: shared hit=266
+Planning Time: 0.585 ms
+Execution Time: 248.769 ms
+
+== 7. Revenue series for one vehicle over the 90-day maximum (needs every vehicle to rank each day)
+SET
+Sort (actual time=4625.940..4625.944 rows=90 loops=1)
+  Sort Key: r.day
+  Sort Method: quicksort  Memory: 31kB
+  Buffers: shared hit=40823, temp read=44027 written=44098
+  ->  Subquery Scan on r (actual time=3466.015..4625.917 rows=90 loops=1)
+        Filter: (r.id = 'a954f6c3-a04f-4e88-a4f0-9c87685bf60c'::uuid)
+        Rows Removed by Filter: 3599910
+        Buffers: shared hit=40823, temp read=44027 written=44098
+        ->  WindowAgg (actual time=3459.069..4538.791 rows=3600000 loops=1)
+              Buffers: shared hit=40823, temp read=44027 written=44098
+              ->  Sort (actual time=3459.057..3748.123 rows=3600000 loops=1)
+                    Sort Key: a.day, a.average DESC
+                    Sort Method: external merge  Disk: 176128kB
+                    Buffers: shared hit=40823, temp read=44027 written=44098
+                    ->  Subquery Scan on a (actual time=18.171..2591.544 rows=3600000 loops=1)
+                          Filter: (a.day >= '2026-07-14'::date)
+                          Rows Removed by Filter: 240000
+                          Buffers: shared hit=40823
+                          ->  WindowAgg (actual time=18.168..2398.253 rows=3840000 loops=1)
+                                Buffers: shared hit=40823
+                                ->  Incremental Sort (actual time=18.165..1197.188 rows=3840000 loops=1)
+                                      Sort Key: v.id, (('2026-07-08'::date + n.n))
+                                      Presorted Key: v.id
+                                      Full-sort Groups: 40000  Sort Method: quicksort  Average Memory: 28kB  Peak Memory: 28kB
+                                      Pre-sorted Groups: 40000  Sort Method: quicksort  Average Memory: 30kB  Peak Memory: 30kB
+                                      Buffers: shared hit=40823
+                                      ->  Merge Left Join (actual time=18.131..698.481 rows=3840000 loops=1)
+                                            Merge Cond: (v.id = t.vehicle_id)
+                                            Join Filter: ((((t.created_at AT TIME ZONE 'Asia/Kolkata'::text))::date) = ('2026-07-08'::date + n.n))
+                                            Rows Removed by Join Filter: 2520445
+                                            Buffers: shared hit=40823
+                                            ->  Nested Loop (actual time=0.008..284.155 rows=3840000 loops=1)
+                                                  Buffers: shared hit=40103
+                                                  ->  Index Scan using vehicles_pkey on vehicles v (actual time=0.004..20.637 rows=40000 loops=1)
+                                                        Buffers: shared hit=40103
+                                                  ->  Function Scan on generate_series n (actual time=0.000..0.002 rows=96 loops=40000)
+                                            ->  Materialize (actual time=18.121..89.833 rows=2546881 loops=1)
+                                                  Buffers: shared hit=720
+                                                  ->  GroupAggregate (actual time=18.120..33.818 rows=26531 loops=1)
+                                                        Group Key: t.vehicle_id, (((t.created_at AT TIME ZONE 'Asia/Kolkata'::text))::date)
+                                                        Buffers: shared hit=720
+                                                        ->  Sort (actual time=18.117..24.051 rows=47404 loops=1)
+                                                              Sort Key: t.vehicle_id, (((t.created_at AT TIME ZONE 'Asia/Kolkata'::text))::date)
+                                                              Sort Method: quicksort  Memory: 3588kB
+                                                              Buffers: shared hit=720
+                                                              ->  Seq Scan on trips t (actual time=0.004..12.265 rows=47404 loops=1)
+                                                                    Filter: ((created_at >= '2026-07-08 00:00:00+05:30'::timestamp with time zone) AND (created_at < '2026-10-12 00:00:00+05:30'::timestamp with time zone) AND ((status)::text = 'COMPLETED'::text))
+                                                                    Rows Removed by Filter: 2596
+                                                                    Buffers: shared hit=720
+Planning Time: 0.217 ms
+Execution Time: 4670.150 ms

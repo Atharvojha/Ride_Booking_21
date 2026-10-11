@@ -1,0 +1,806 @@
+{
+  "facts": {
+    "startedAt": "2026-10-11T12:05:22.910593+00:00",
+    "postgres": {
+      "riders": 100000,
+      "vehicles": 40000,
+      "activeVehicles": 36756,
+      "tripsByStatus": {
+        "REQUESTED": 1000,
+        "COMPLETED": 47404,
+        "IN TRANSIT": 1596
+      },
+      "walletAuditByAction": {
+        "CREDIT": 194,
+        "ESCROW_RELEASE": 47404,
+        "ESCROW_HOLD": 50000
+      },
+      "databaseSize": "57 MB",
+      "version": "17.11 (Homebrew)"
+    },
+    "mongo": {
+      "VehicleMetadata": 40000,
+      "TripReviews": 28163,
+      "TelemetryPings": 520000,
+      "databaseSizeBytes": 118159094.0,
+      "version": "7.0.43"
+    },
+    "nearby": {
+      "vehiclesWithAnyAvailableFreshPingInRadius": 4162,
+      "candidatePings": 27713,
+      "validAfterLatestPingAndActiveChecks": 1967
+    },
+    "revenueCopyDistinctTripDays": 60,
+    "finishedAt": "2026-10-11T12:06:39.250440+00:00"
+  },
+  "timings": {
+    "riders page 1, 100 rows": {
+      "path": "/api/riders",
+      "params": {
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 9465,
+      "runsSeconds": [
+        0.074,
+        0.07,
+        0.07
+      ],
+      "medianSeconds": 0.07
+    },
+    "riders search \"Acharya\"": {
+      "path": "/api/riders",
+      "params": {
+        "search": "Acharya",
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 2471,
+      "runsSeconds": [
+        0.132,
+        0.137,
+        0.132
+      ],
+      "medianSeconds": 0.132
+    },
+    "riders last page": {
+      "path": "/api/riders",
+      "params": {
+        "page": 1000,
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 9392,
+      "runsSeconds": [
+        0.386,
+        0.387,
+        0.391
+      ],
+      "medianSeconds": 0.387
+    },
+    "vehicles page 1, 100 rows": {
+      "path": "/api/vehicles",
+      "params": {
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 10890,
+      "runsSeconds": [
+        0.019,
+        0.018,
+        0.015
+      ],
+      "medianSeconds": 0.018
+    },
+    "vehicles class+active+search": {
+      "path": "/api/vehicles",
+      "params": {
+        "class": "Bike",
+        "active": "true",
+        "search": "TS09",
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 2745,
+      "runsSeconds": [
+        0.023,
+        0.024,
+        0.024
+      ],
+      "medianSeconds": 0.024
+    },
+    "trips page 1, 100 rows": {
+      "path": "/api/trips",
+      "params": {
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 28933,
+      "runsSeconds": [
+        0.064,
+        0.065,
+        0.064
+      ],
+      "medianSeconds": 0.064
+    },
+    "trips COMPLETED page 300": {
+      "path": "/api/trips",
+      "params": {
+        "status": "COMPLETED",
+        "page": 300,
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 28962,
+      "runsSeconds": [
+        0.08,
+        0.075,
+        0.074
+      ],
+      "medianSeconds": 0.075
+    },
+    "wallet audit for one rider": {
+      "path": "/api/riders/0000587d-f68f-4281-b38d-b9dc6c054311/audit",
+      "params": {},
+      "status": 200,
+      "bytes": 94,
+      "runsSeconds": [
+        0.012,
+        0.006,
+        0.006
+      ],
+      "medianSeconds": 0.006
+    },
+    "analytics summary, 100 rows": {
+      "path": "/api/analytics/summary",
+      "params": {
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 16634,
+      "runsSeconds": [
+        0.02,
+        0.019,
+        0.019
+      ],
+      "medianSeconds": 0.019
+    },
+    "revenue default 30 days, as-seeded single-day data": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 8088,
+      "runsSeconds": [
+        1.534,
+        1.531,
+        1.55
+      ],
+      "medianSeconds": 1.534
+    },
+    "nearby origin, limit 50": {
+      "path": "/api/vehicles/nearby",
+      "params": {
+        "longitude": 78.4867,
+        "latitude": 17.385,
+        "limit": 50
+      },
+      "status": 200,
+      "bytes": 10394,
+      "runsSeconds": [
+        1.265,
+        1.308,
+        1.318,
+        1.288,
+        1.323
+      ],
+      "medianSeconds": 1.308
+    },
+    "nearby origin, limit 1": {
+      "path": "/api/vehicles/nearby",
+      "params": {
+        "longitude": 78.4867,
+        "latitude": 17.385,
+        "limit": 1
+      },
+      "status": 200,
+      "bytes": 350,
+      "runsSeconds": [
+        1.311,
+        1.304,
+        1.303,
+        1.313,
+        1.302
+      ],
+      "medianSeconds": 1.304
+    },
+    "reviews summary, all": {
+      "path": "/api/reviews/summary",
+      "params": {},
+      "status": 200,
+      "bytes": 567,
+      "runsSeconds": [
+        0.04,
+        0.039,
+        0.038,
+        0.039,
+        0.04
+      ],
+      "medianSeconds": 0.039
+    },
+    "reviews page 1, 100 rows": {
+      "path": "/api/reviews",
+      "params": {
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 23518,
+      "runsSeconds": [
+        0.027,
+        0.031,
+        0.025,
+        0.023,
+        0.023
+      ],
+      "medianSeconds": 0.025
+    },
+    "reviews last page, 100 rows": {
+      "path": "/api/reviews",
+      "params": {
+        "page": 282,
+        "pageSize": 100
+      },
+      "status": 200,
+      "bytes": 14806,
+      "runsSeconds": [
+        0.028,
+        0.031,
+        0.03,
+        0.029,
+        0.03
+      ],
+      "medianSeconds": 0.03
+    },
+    "50 simultaneous bookings for 50 riders": {
+      "status": [
+        201
+      ],
+      "seconds": 0.226
+    },
+    "materialized view refresh": {
+      "status": 200,
+      "seconds": 0.278
+    },
+    "revenue default 30 days, 25 rows": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 8033,
+      "runsSeconds": [
+        1.554,
+        1.543,
+        1.553
+      ],
+      "medianSeconds": 1.553
+    },
+    "revenue maximum 90 days, 25 rows": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25,
+        "from": "2026-07-14",
+        "to": "2026-10-11"
+      },
+      "status": 200,
+      "bytes": 15414,
+      "runsSeconds": [
+        4.078,
+        4.116,
+        4.116
+      ],
+      "medianSeconds": 4.116
+    }
+  },
+  "checks": [
+    {
+      "check": "Counts recorded",
+      "passed": true,
+      "detail": "{\"postgres\": {\"riders\": 100000, \"vehicles\": 40000, \"activeVehicles\": 36756, \"tripsByStatus\": {\"REQUESTED\": 1000, \"COMPLETED\": 47404, \"IN TRANSIT\": 1596}, \"walletAuditByAction\": {\"CREDIT\": 194, \"ESCROW_RELEASE\": 47404, \"ESCROW_HOLD\": 50000}, \"databaseSize\": \"57 MB\", \"version\": \"17.11 (Homebrew)\"}, \"mongo\": {\"VehicleMetadata\": 40000, \"TripReviews\": 28163, \"TelemetryPings\": 520000, \"databaseSizeBytes\": 118159094.0, \"version\": \"7.0.43\"}}"
+    },
+    {
+      "check": "As seeded: one ESCROW_HOLD audit row per trip",
+      "passed": true,
+      "detail": "holds=50000 trips=50000"
+    },
+    {
+      "check": "As seeded: one ESCROW_RELEASE audit row per completed trip",
+      "passed": true,
+      "detail": "released=47404 completed=47404"
+    },
+    {
+      "check": "As seeded: held money equals the sum of trip fares",
+      "passed": true,
+      "detail": "held=6857819.79 fares=6857819.79"
+    },
+    {
+      "check": "As seeded: latest saved running balance equals the wallet for every rider",
+      "passed": true,
+      "detail": "riders with a mismatch: 0"
+    },
+    {
+      "check": "As seeded: no rider has two active trips",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "As seeded: no negative wallet",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Browse: rider total matches SQL",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Browse: page size above 100 is refused",
+      "passed": true,
+      "detail": "status 422"
+    },
+    {
+      "check": "Browse: a page past the end is empty with the true total",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Browse: rider search count matches SQL",
+      "passed": true,
+      "detail": "178 rows"
+    },
+    {
+      "check": "Browse: vehicle class, active and search filters match SQL",
+      "passed": true,
+      "detail": "1124 rows"
+    },
+    {
+      "check": "Browse: all REQUESTED trip pages match SQL order, with no repeats",
+      "passed": true,
+      "detail": "1000 trips over 11 pages"
+    },
+    {
+      "check": "Browse: one-day Asia/Kolkata trip filter matches SQL",
+      "passed": true,
+      "detail": "47404 trips on 2026-10-11"
+    },
+    {
+      "check": "Details: rider matches SQL",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Details: trip matches SQL",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Details: vehicle metadata matches the Mongo document for 10 vehicles",
+      "passed": true,
+      "detail": "10/10"
+    },
+    {
+      "check": "As seeded - Summary: lifetime totals equal the raw trips table (all statuses counted, completed earnings)",
+      "passed": true,
+      "detail": "{'lifetimeTripCount': 50000, 'lifetimeEarnings': '6498362.47'} stamp=2026-10-11T11:30:43.080018Z"
+    },
+    {
+      "check": "As seeded - Summary: one row per vehicle",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Nearby: fresh pings exist, so the comparisons below are not empty against empty",
+      "passed": true,
+      "detail": "1967 valid vehicles; pings expire 2 hours after seeding"
+    },
+    {
+      "check": "Nearby: Hyderabad demo origin, limit 1 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 1 items, reference has 1967 valid vehicles"
+    },
+    {
+      "check": "Nearby: Hyderabad demo origin, limit 10 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 10 items, reference has 1967 valid vehicles"
+    },
+    {
+      "check": "Nearby: Hyderabad demo origin, limit 50 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 50 items, reference has 1967 valid vehicles"
+    },
+    {
+      "check": "Nearby: city edge, limit 1 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 1 items, reference has 1644 valid vehicles"
+    },
+    {
+      "check": "Nearby: city edge, limit 10 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 10 items, reference has 1644 valid vehicles"
+    },
+    {
+      "check": "Nearby: city edge, limit 50 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 50 items, reference has 1644 valid vehicles"
+    },
+    {
+      "check": "Nearby: far from any vehicle, limit 1 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 0 items, reference has 0 valid vehicles"
+    },
+    {
+      "check": "Nearby: far from any vehicle, limit 10 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 0 items, reference has 0 valid vehicles"
+    },
+    {
+      "check": "Nearby: far from any vehicle, limit 50 matches the latest-ping reference",
+      "passed": true,
+      "detail": "API 0 items, reference has 0 valid vehicles"
+    },
+    {
+      "check": "Nearby: a limit above 50 is refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Nearby: the latest-ping rule removes vehicles whose older pings looked valid",
+      "passed": true,
+      "detail": "{\"vehiclesWithAnyAvailableFreshPingInRadius\": 4162, \"candidatePings\": 27713, \"validAfterLatestPingAndActiveChecks\": 1967}"
+    },
+    {
+      "check": "Reviews: all-review summary matches Python totals",
+      "passed": true,
+      "detail": "28163 reviews"
+    },
+    {
+      "check": "Reviews: one-vehicle summary matches",
+      "passed": true,
+      "detail": "7 reviews"
+    },
+    {
+      "check": "Reviews: a date filter is applied before the summary",
+      "passed": true,
+      "detail": "5041 reviews"
+    },
+    {
+      "check": "Reviews: no reviews gives no average rating, not zero",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Reviews: walking every page returns each review once, newest first",
+      "passed": true,
+      "detail": "282 pages"
+    },
+    {
+      "check": "Copy before writes - Summary: lifetime totals equal the raw trips table (all statuses counted, completed earnings)",
+      "passed": true,
+      "detail": "{'lifetimeTripCount': 50000, 'lifetimeEarnings': '6498362.47'} stamp=2026-10-11T11:30:43.080018Z"
+    },
+    {
+      "check": "Copy before writes - Summary: one row per vehicle",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking: 201 with exact saved balances and the exact trigger audit row",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking: a second active trip is refused without changing the wallet",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Status: completing before starting is refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Status: REQUESTED to IN TRANSIT works",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Status: starting twice is refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Status: completion releases escrow with no refund",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking: the same rider can book again after completion",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking: low balance is refused with no debit and no audit row",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking: an inactive vehicle is refused with no debit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Booking: invalid fares are refused",
+      "passed": true,
+      "detail": "[422, 422, 422, 422, 422]"
+    },
+    {
+      "check": "Wallet audit: history, opening balance and saved running balances agree",
+      "passed": true,
+      "detail": "3 rows"
+    },
+    {
+      "check": "Wallet audit: a later start date has no rows but keeps the opening balance",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Wallet audit: a one-day filter returns today's rows",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Concurrency: 20 simultaneous bookings for one rider create exactly one trip",
+      "passed": true,
+      "detail": "1"
+    },
+    {
+      "check": "Concurrency: 50 simultaneous bookings for different riders all succeed",
+      "passed": true,
+      "detail": "50/50"
+    },
+    {
+      "check": "Summary: new bookings are not shown until a refresh",
+      "passed": true,
+      "detail": "summary 50000, raw 50053"
+    },
+    {
+      "check": "Refresh: saved time moves forward and totals now equal the raw table",
+      "passed": true,
+      "detail": "0.278 s"
+    },
+    {
+      "check": "Copy after booking tests: one ESCROW_HOLD audit row per trip",
+      "passed": true,
+      "detail": "holds=50053 trips=50053"
+    },
+    {
+      "check": "Copy after booking tests: one ESCROW_RELEASE audit row per completed trip",
+      "passed": true,
+      "detail": "released=47405 completed=47405"
+    },
+    {
+      "check": "Copy after booking tests: held money equals the sum of trip fares",
+      "passed": true,
+      "detail": "held=6859513.24 fares=6859513.24"
+    },
+    {
+      "check": "Copy after booking tests: latest saved running balance equals the wallet for every rider",
+      "passed": true,
+      "detail": "riders with a mismatch: 0"
+    },
+    {
+      "check": "Copy after booking tests: no rider has two active trips",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Copy after booking tests: no negative wallet",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue SQL: all 40000 vehicles match the Python reference on 2026-09-12",
+      "passed": true,
+      "detail": "0 differences"
+    },
+    {
+      "check": "Revenue SQL: all 40000 vehicles match the Python reference on 2026-09-27",
+      "passed": true,
+      "detail": "0 differences"
+    },
+    {
+      "check": "Revenue SQL: all 40000 vehicles match the Python reference on 2026-10-11",
+      "passed": true,
+      "detail": "0 differences"
+    },
+    {
+      "check": "Revenue API: default range is the latest 30 Kolkata days",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: row total is vehicles x days",
+      "passed": true,
+      "detail": "1200000"
+    },
+    {
+      "check": "Revenue API: first 100 whole-fleet ranks for the latest day match the reference",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: a page that crosses from one day to the next matches the reference",
+      "passed": true,
+      "detail": "page 405 of size 99"
+    },
+    {
+      "check": "Revenue API: best-ranked vehicle keeps its whole-fleet rank on all 30 days",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: middle-ranked vehicle keeps its whole-fleet rank on all 30 days",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: no revenue vehicle keeps its whole-fleet rank on all 30 days",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: vehicles with equal averages share a dense rank",
+      "passed": true,
+      "detail": "34094 vehicles share the zero-revenue rank"
+    },
+    {
+      "check": "Revenue API: the 90-day maximum succeeds",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: a 90-day response has 90 series days and a bounded size",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Revenue API: 91 days is refused",
+      "passed": true,
+      "detail": "status 422"
+    }
+  ],
+  "passed": 75,
+  "failed": 0,
+  "environment": {
+    "machine": "Apple M2, 8 cores, 8 GB memory, macOS (Darwin 27.0.0)",
+    "postgresql": "17.11 (Homebrew), shared_buffers 128MB, work_mem 4MB, default settings",
+    "mongodb": "7.0.43",
+    "python": "3.13.1",
+    "node": "26.8.2",
+    "seedSizes": {
+      "NUM_RIDERS": 100000,
+      "NUM_VEHICLES": 40000,
+      "NUM_TRIPS": 50000,
+      "NUM_PINGS": 520000
+    },
+    "databases": "ridesync_scale_20261011 (seeded PostgreSQL and MongoDB); ridesync_scale_20261011_copy (PostgreSQL copy with trip dates spread over 60 days, used for booking, refresh and revenue checks)"
+  },
+  "seeding": {
+    "postgresSeederSeconds": 226.5,
+    "tripLoopSeconds": 219.8,
+    "mongoSeederSeconds": 8.0,
+    "pingInsertSeconds": 7.0,
+    "attemptedTrips": 50000,
+    "bookedTrips": 50000,
+    "trips": {
+      "COMPLETED": 47404,
+      "IN TRANSIT": 1596,
+      "REQUESTED": 1000
+    },
+    "reviewsInserted": 28163,
+    "note": "All trips were created within about four minutes on 11 October 2026. The seeder does not spread trip dates."
+  },
+  "revenueTimingsBeforeChange": {
+    "revenue default 30 days, as-seeded single-day data": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 8088,
+      "runsSeconds": [
+        3.582,
+        3.559,
+        3.574
+      ],
+      "medianSeconds": 3.574
+    },
+    "revenue default 30 days, 25 rows": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 8033,
+      "runsSeconds": [
+        3.729,
+        3.719,
+        3.719
+      ],
+      "medianSeconds": 3.719
+    },
+    "revenue maximum 90 days, 25 rows": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25,
+        "from": "2026-07-14",
+        "to": "2026-10-11"
+      },
+      "status": 200,
+      "bytes": 15414,
+      "runsSeconds": [
+        10.601,
+        10.583,
+        10.541
+      ],
+      "medianSeconds": 10.583
+    }
+  },
+  "revenueTimingsAfterChange": {
+    "revenue default 30 days, as-seeded single-day data": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 8088,
+      "runsSeconds": [
+        1.534,
+        1.531,
+        1.55
+      ],
+      "medianSeconds": 1.534
+    },
+    "revenue default 30 days, 25 rows": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25
+      },
+      "status": 200,
+      "bytes": 8033,
+      "runsSeconds": [
+        1.554,
+        1.543,
+        1.553
+      ],
+      "medianSeconds": 1.553
+    },
+    "revenue maximum 90 days, 25 rows": {
+      "path": "/api/analytics/revenue",
+      "params": {
+        "pageSize": 25,
+        "from": "2026-07-14",
+        "to": "2026-10-11"
+      },
+      "status": 200,
+      "bytes": 15414,
+      "runsSeconds": [
+        4.078,
+        4.116,
+        4.116
+      ],
+      "medianSeconds": 4.116
+    }
+  }
+}
