@@ -43,9 +43,11 @@
     "browser": "Google Chrome"
   },
   "pending": [
-    "Full-scale dataset checks",
-    "Fresh telemetry for the later live map demo",
-    "Demo video and viva preparation",
+    "Demo video",
     "Actual team contribution details and final submission ZIP"
+  ],
+  "laterWork": [
+    "Full-size checks were completed on 11 October 2026: see scale_verification.json.",
+    "A telemetry-only helper (data_generation/refresh_demo_pings.py) was added for the live map demo; run it just before the demo."
   ]
 }

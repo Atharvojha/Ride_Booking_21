@@ -30,4 +30,4 @@ Unit checks cover fare precision, API failures/timeouts, old replies arriving la
 
 Lost replies and read/refresh outages are deliberately intercepted in browser tests. Successful writes still reach the real temporary API. Do not count the intercepted failures as a live database outage test. API-level database outage and concurrency checks remain in tests/test_api.py.
 
-The screen captures in docs/design/screenshots/ come from the browser fixture. Full-scale checks, demo recording, contribution details and the submission ZIP are still pending.
+The screen captures in docs/design/screenshots/ come from the browser fixture. Full-size API and manual screen checks are in ../docs/scale_verification.md. Demo recording, contribution details and the submission ZIP are still pending.

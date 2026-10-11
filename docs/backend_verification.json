@@ -146,5 +146,6 @@
     "mongo/02_workflow_geonear.js",
     "mongo/03_workflow4_facet.js"
   ],
-  "verified_at": "2026-10-11"
+  "verified_at": "2026-10-11",
+  "scaleNote": "The 'scale' line is the state when this report was written. Full-size checks were run later: see scale_verification.json."
 }
