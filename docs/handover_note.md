@@ -29,3 +29,14 @@ Trip statuses are only REQUESTED, IN TRANSIT and COMPLETED. Route fields, cancel
 ## Suggestions for the original authors
 
 Use a configuration file for connection settings and give clear setup steps. Show the order for adding data and refreshing views. Explain how the moving average works, how completion errors are returned, and which vehicle location updates count as current. Include tests for failures as well as successful bookings.
+
+
+## First API step — 11 October 2026
+
+Added browsing, booking, trip status and wallet-audit routes. Vehicle details also read MongoDB metadata. Analytics, nearby search, review summaries and web screens remain pending.
+
+The booking procedure now checks fare limits and active vehicles, returns the exact audit row created by the wallet trigger, and keeps failed bookings from changing the wallet. This adds a third output argument; seed scripts and tests were updated. The seeder chooses active vehicles for trips. The earlier seeded counts in this note describe the original audit run; the independent small regression run produced 95 completed trips and 63 reviews. The separate demo seed produced 97 completed trips and 56 reviews.
+
+Audit timestamps now use the actual write time. Completion locks the rider's wallet before changing the trip, using the same lock order as booking. This keeps its zero-change release entry in the right order when a top-up happens at the same time.
+
+Checked 36 API cases and reran all 27 backend checks successfully. An independent verifier ran both suites and extra direct database and concurrency checks. The API test client gives one dependency warning. Large dataset and browser UI checks remain pending. See api_verification.json for this step's results and api/README.md for setup.

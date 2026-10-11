@@ -2,16 +2,16 @@
 
 Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride_Booking_21). Inherited source: [amaan070/Ride_Booking_21](https://github.com/amaan070/Ride_Booking_21), starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`. All 23 inherited commits are preserved.
 
-We checked the database scripts and fixed the problems we found. The web frontend and API are not implemented yet. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [planned API endpoints](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
+We checked the database scripts and fixed the problems we found. The first API step is working: browsing, booking, trip status changes and wallet history. The web frontend is still pending. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [API endpoints and remaining plan](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
 
 ## Current setup (macOS/Linux)
 
-Requires running PostgreSQL, MongoDB, mongosh, Python 3 and Git. PostgreSQL needs a role that can create the development and smoke-test databases. Configure your local role/password; do not commit credentials.
+Requires running PostgreSQL, MongoDB, mongosh, Python 3.11 or newer and Git. PostgreSQL needs a role that can create the development and smoke-test databases. Configure your local role/password; do not commit credentials.
 
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r data_generation/requirements.txt
+pip install -r api/requirements.txt -r data_generation/requirements.txt
 cp .env.example .env
 # Edit .env for your local database role and connection settings.
 set -a
@@ -31,15 +31,36 @@ mongosh "$MONGO_URI" --quiet --file mongo/03_workflow4_facet.js
 
 Use a new database for initial setup; schema SQL is not a reset script. Stop if a step reports an error. Both databases must be running before the PostgreSQL seeder, because it also writes VehicleMetadata. Seeders append data; rerunning them is not a reset. Refresh the materialized view after seeding. Telemetry expires after two hours; regenerate pings for later map demonstrations.
 
-`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. We still need to test a large dataset and bookings made at the same time.
+`.env.example` uses a small development seed. For the inherited scale, set NUM_RIDERS=100000, NUM_VEHICLES=40000, NUM_TRIPS=50000 and NUM_PINGS=520000. Concurrent booking and completion tests pass. Large dataset checks are still pending.
+
+## Run the API
+
+For an already-seeded database, load your .env settings and apply only these two updated scripts:
+
+~~~sh
+set -a
+source .env
+set +a
+psql -v ON_ERROR_STOP=1 -f sql/03_triggers_and_audit.sql
+psql -v ON_ERROR_STOP=1 -f sql/04_stored_procedures.sql
+~~~
+
+These update the wallet trigger and booking/completion procedures without recreating tables. Stop on any error. New databases already receive them in the setup loop above.
+
+~~~sh
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+~~~
+
+Open [API docs](http://127.0.0.1:8000/docs) to try requests. See [API setup](api/README.md) and [API check results](docs/api_verification.json). FastAPI lets us keep the server small and reuse the inherited database procedures. React, Vite, plain CSS and Leaflet remain the frontend choices.
 
 ## Backend checks
 
 ```sh
 python tests/backend_smoke.py
+python -m pytest tests/test_api.py -q
 ```
 
-The script creates unique `ridesync_verify_*` databases, uses a small sample dataset and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. The test databases are kept so we can inspect the results. It exits nonzero if any check fails. The checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0.
+The script creates unique `ridesync_verify_*` databases, uses a small sample dataset and checks booking, rollback, audit triggers, status progression, analytics, metadata indexes, TTL, geoNear and review facet execution. The test databases are kept so we can inspect the results. It exits nonzero if any check fails. The original checked-in report records 27 passing checks on PostgreSQL 17.11 and MongoDB 7.0. All 27 still pass after this API step. The API suite has 36 passing checks; it creates separate test databases and removes them afterwards. One dependency warning from the test client remains.
 
 ## Changes and assumptions
 
@@ -48,12 +69,13 @@ The script creates unique `ridesync_verify_*` databases, uses a small sample dat
 - Replaced embedded/prompted connection settings with environment configuration.
 - Fixed seeder top-ups to update the real wallet and fire its audit trigger.
 - Added .env.example, ignored local credentials/dependencies, tests and handover/API documentation; corrected the inherited ERD filename.
+- Booking now rejects inactive vehicles and invalid fares in the procedure, returns the exact trigger-created audit ID, and uses that row for before/after balances. Seeded trips use active vehicles. Completion locks the wallet before the trip and records the actual audit time, so a concurrent top-up does not reorder the running balance.
 - The booking procedures finish their own database transactions. The API must call them directly, without starting another transaction around them. The current query averages seven revenue rows. The API plan changes this to seven calendar days, including days with no completed trips.
 - Demo user switching is planned. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. The design uses INR and a user-entered fare; route fields and cancellation are outside the required demo.
 
 ## Submission checklist (pending)
 
-Save wireframes and user descriptions in docs/design/. Implement api/ and web/, complete meaningful UI tests and scale checks, and record a demo of at most five minutes. Before submission, update the actual contribution table, demo link and final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
+Wireframes and user descriptions are saved in docs/design/. Finish analytics, nearby search and review API routes, build web/, complete meaningful UI tests and scale checks, and record a demo of at most five minutes. Before submission, update the actual contribution table, demo link and final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
 
 Team members will be added to the contribution table when details are provided; record each person's actual design and code work. Collaborator access is managed by the team owner.
 
@@ -3224,6 +3246,6 @@ LAST COMMIT HASH:
 
 ## Team 10 design step
 
-The [design plan](docs/design/README.md) records users, required screens, shared styles, phone layouts and changes from the Figma prototype. Open [the six wireframes](docs/design/wireframes.html) in a browser. The [API plan](docs/api_endpoints.md) now includes planned inputs, outputs and errors. These are design documents; the API and web app are not built yet.
+The [design plan](docs/design/README.md) records users, required screens, shared styles, phone layouts and changes from the Figma prototype. Open [the six wireframes](docs/design/wireframes.html) in a browser. The [API plan](docs/api_endpoints.md) now includes planned inputs, outputs and errors. These are design documents. The first API step now works; the web app is still pending.
 
-Demo assumptions: INR, Asia/Kolkata date filters, a user-entered booking fare, a selectable demo rider, and a two-hour telemetry freshness limit matching the inherited expiry. Routes and real login are outside this step. API implementation will need documented SQL changes for exact booking audit IDs, calendar-day revenue averages and persisted refresh times. The original team's commit history is preserved.
+Demo assumptions: INR, Asia/Kolkata date filters, a user-entered booking fare, a selectable demo rider, and a two-hour telemetry freshness limit matching the inherited expiry. Routes and real login are outside this step. Exact booking audit IDs are now implemented. Calendar-day revenue averages and persisted refresh times are still planned. The original team's commit history is preserved.

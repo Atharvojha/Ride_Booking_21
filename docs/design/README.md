@@ -1,6 +1,6 @@
 # RideSync design plan
 
-Team 10, Assignment 2. This is the design step. The web app and API are still to be built.
+Team 10, Assignment 2. These are the planned screens. Browsing, booking, status and wallet API routes now work; the remaining API routes and web app are still to be built.
 
 ## Design reference
 
@@ -46,7 +46,7 @@ Trip details offer REQUESTED -> IN TRANSIT -> COMPLETED. Completion calls sp_rel
 - Remove pickup, destination and calculated distance from booking. There is no route service or storage for those fields. The nearby origin is a separate coordinate input.
 - Remove the selectable prototype booking result; show the real database result instead.
 - Use actual metadata fields when present: features and inspection records. Do not invent battery/range specifications.
-- Wallet rows have no related-trip field today. A reliable booking-to-audit link needs an API-stage change documented in the API plan.
+- Wallet rows have no related-trip field. The booking procedure now returns the exact audit ID, which the API uses to show the new entry.
 - Leave Overview, Settings, Add record, saved drafts, CSV export, global search, notifications and comparison percentages for later. The six required screens take priority.
 
 ## Shared look and components
@@ -74,6 +74,6 @@ At laptop width, use a sidebar, header and two-column booking/map layouts. Below
 
 ## Build choices and checks still needed
 
-Planned stack: React with [Vite](https://vite.dev/guide/) for the browser, ordinary CSS for shared styles, [FastAPI](https://fastapi.tiangolo.com/) for a small Python API, a chart library for revenue/reviews, and [Leaflet](https://leafletjs.com/) for the map. Python fits the existing seed scripts. Leaflet can show MongoDB results without a paid map SDK; choose and document a tile provider's usage terms before implementation. These libraries are not installed in this step.
+Planned stack: React with [Vite](https://vite.dev/guide/) for the browser, ordinary CSS for shared styles, [FastAPI](https://fastapi.tiangolo.com/) for a small Python API, a chart library for revenue/reviews, and [Leaflet](https://leafletjs.com/) for the map. Python fits the existing seed scripts. Leaflet can show MongoDB results without a paid map SDK; choose and document a tile provider's usage terms before implementation. FastAPI is used by the working API. The frontend libraries will be added when we build the web app.
 
 Before submission, test a successful booking, low balance, an active trip, inactive vehicle, status changes, simultaneous bookings, a lost reply, wallet date filters, seven calendar days with gaps, tied rankings, refresh failures, stale/newer-unavailable pings, empty reviews, pagination and phone layouts. These are planned checks, not reported test results. Everyone must be able to explain the stored procedures, trigger, SQL query and MongoDB pipelines for the viva.

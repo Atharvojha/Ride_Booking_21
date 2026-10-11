@@ -116,12 +116,12 @@ def seed_vehicles(conn):
     with conn.cursor() as cur:
         rows = extras.execute_values(
             cur,
-            "INSERT INTO vehicles (license_plate, class, is_active) VALUES %s RETURNING id, class",
+            "INSERT INTO vehicles (license_plate, class, is_active) VALUES %s RETURNING id, class, is_active",
             data,
             fetch=True,
         )
     conn.commit()
-    vehicles = [{"id": row[0], "class": row[1]} for row in rows]
+    vehicles = [{"id": row[0], "class": row[1], "is_active": row[2]} for row in rows]
     print(f"  done. {len(vehicles)} vehicles created.")
     return vehicles
 
@@ -205,6 +205,10 @@ def seed_trips(conn, rider_balances, vehicles):
     print(f"Attempting {NUM_TRIPS} trips via sp_book_trip/sp_release_escrow...")
     start = time.time()
 
+    active_vehicles = [v for v in vehicles if v.get('is_active', True)]
+    if not active_vehicles:
+        raise ValueError('No active vehicles are available for trip seeding.')
+
     conn.autocommit = True
 
     eligible_riders = dict(rider_balances)  # rider_id -> current balance
@@ -259,16 +263,16 @@ def seed_trips(conn, rider_balances, vehicles):
                 )
                 eligible_riders[rider_id] = float(cur.fetchone()[0])
 
-            vehicle = random.choice(vehicles)
+            vehicle = random.choice(active_vehicles)
             fare = fare_for_class(vehicle["class"])
             fare = round(min(fare, eligible_riders[rider_id]), 2)
             fare = max(fare, 1.00)
 
             cur.execute(
-                "CALL sp_book_trip(%s, %s, %s, NULL, NULL)",
+                "CALL sp_book_trip(%s, %s, %s, NULL, NULL, NULL)",
                 (rider_id, vehicle["id"], fare)
             )
-            trip_id, status = cur.fetchone()
+            trip_id, status, audit_id = cur.fetchone()
 
             if status != "BOOKED":
                 # Should not happen given the guarantees above — log

@@ -1,4 +1,6 @@
-# Team 10 API plan — not built yet
+# Team 10 API endpoints and remaining plan
+
+The health, rider, vehicle, trip, booking, status and wallet-audit routes are implemented. Analytics, nearby search and review routes below are still planned. See [setup instructions](../api/README.md).
 
 The browser talks only to the API. The API calls PostgreSQL procedures/views and MongoDB aggregations. Demo rider switching is sufficient; real login is outside the required scope. Validate IDs, coordinates, fares, filters and status transitions on the server.
 
@@ -26,7 +28,7 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 - Lists default to 25 rows; cap pageSize at 100. Filter and paginate in the database. Keep the sort order consistent. Use the ID to sort records with the same value. The rider dropdown should also search and load one page at a time.
 - Booking errors return `{error: {code, message}}`: e.g. INSUFFICIENT_BALANCE, ACTIVE_TRIP_EXISTS, INVALID_INPUT, NOT_FOUND. API code maps procedure output statuses/constraint names to friendly messages and does not expose raw database errors.
 - The stored procedures finish their own transactions. Call them directly without starting another transaction around them (autocommit). A returned FAILED status is a failure even when the driver does not throw. Verify completion state because the inherited completion procedure uses notices on failure.
-- Reject duplicate submission while booking is pending. If the connection fails, the booking may still have succeeded. Check the rider's trip and balance before allowing a retry. Test bookings made at the same time before submission.
+- Reject duplicate submission while booking is pending. If the connection fails, the booking may still have succeeded. Check the rider's trip and balance before allowing a retry. Concurrent booking, completion and wallet top-up cases are covered by tests/test_api.py. The web form retry behavior is still pending.
 - The chart will use seven calendar days, including zero-revenue dates. The SQL view needs the change described below. Keep DENSE_RANK in SQL.
 - Nearby search uses the latest ping per vehicle before applying availability, freshness and radius checks. Fresh means within two hours, matching the inherited TTL (automatic expiry). Poll every 10 seconds; do not overlap requests. Use $geoNear to calculate distance.
 - Use GeoJSON coordinate order [longitude, latitude]. Default demo origin matches the Hyderabad seeder; no real user location is needed.
@@ -35,7 +37,7 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 
 ## Shared input and response format
 
-These are planned contracts, not working endpoints. Names in JSON use camelCase; database columns keep their current names. IDs below are UUIDs; MongoDB document IDs are strings.
+These contracts are used by the implemented routes. Analytics, nearby search and reviews are the next API step. Names in JSON use camelCase; database columns keep their current names. IDs below are UUIDs; MongoDB document IDs are strings.
 
 - Money is a decimal string with two decimal places, such as "125.50". Validate with decimal arithmetic on the server. Fare must be greater than zero and at most 99,999,999.99. This fits both the fare column and the inherited wallet trigger DECIMAL(10,2) amount variable. Reject extra decimal places, NaN and infinity. Format INR only for display.
 - page starts at 1; pageSize defaults to 25 and must be 1 to 100. Invalid values are errors. Lists return items, page, pageSize and total. A page beyond the end returns an empty items list.
@@ -84,11 +86,11 @@ On success it returns HTTP 201:
                      "actionType": "ESCROW_HOLD", "balanceAfter": "380.00", "timestamp": "<UTC time>"}
     }
 
-To identify this audit entry safely, a later SQL change will make the wallet trigger capture the inserted audit ID and store it in a transaction-local setting. sp_book_trip will read that ID before COMMIT and return it as a new OUT argument. On failure it returns no trip or audit ID. Update seed scripts and tests for the new procedure signature. Do not guess the audit row by choosing the latest timestamp or matching amount.
+To identify this audit entry safely, the wallet trigger captures the inserted audit ID and stores it in a transaction-local setting. sp_book_trip reads that ID before COMMIT and returns it as a new OUT argument. On failure it returns no trip or audit ID. Seed scripts and tests now call the six-argument procedure: three inputs and three output placeholders. Do not guess the audit row by choosing the latest timestamp or matching amount.
 
-The API will derive the booking's balanceBefore as auditEntry.balanceAfter minus auditEntry.amountChanged. These are this transaction's balances. A later current-wallet read can differ if another update happens. The trigger still creates the audit row. The procedure still owns the booking transaction. This change is planned and has not been applied.
+The API derives the booking's balanceBefore as auditEntry.balanceAfter minus auditEntry.amountChanged. These are this transaction's balances. A later current-wallet read can differ if another update happens. The trigger still creates the audit row. The procedure still owns the booking transaction. The trigger and procedure changes are applied in this API step.
 
-Reject inactive vehicles in the API and also add the check inside sp_book_trip so non-API callers are protected. is_active is not a per-trip availability lock; the inherited rules only prevent a rider having two active trips. Record any extra fleet rule before adding it.
+sp_book_trip rejects inactive vehicles, and the API returns a friendly error. This protects callers using the procedure directly too. is_active is not a per-trip availability lock; the inherited rules only prevent a rider having two active trips. Record any extra fleet rule before adding it.
 
 PATCH /api/trips/:id/status accepts {"status": "IN TRANSIT"} or {"status": "COMPLETED"}, returns {trip}. Only REQUESTED -> IN TRANSIT -> COMPLETED is allowed. Use a conditional SQL update for the first transition, and sp_release_escrow for completion. Missing trips return 404; wrong current state returns 409. Verify the final status after the procedure; a NOTICE alone is not proof of completion.
 
@@ -96,7 +98,7 @@ PATCH /api/trips/:id/status accepts {"status": "IN TRANSIT"} or {"status": "COMP
 
 GET /api/riders/:id/audit accepts from, to, page and pageSize. Return {items, page, pageSize, total, currentBalance, openingBalance}. Rows use the audit-entry fields above. openingBalance is the stored balance immediately before the selected period, not zero. If there is no preceding log but there is a first in-period entry, derive it as balanceAfter minus amountChanged. If the period is before all recorded history and there is no entry to derive from, return null and show Unknown. Use the stored balanceAfter for every displayed running balance. Do not recalculate it from the current page.
 
-## Revenue and lifetime totals
+## Revenue and lifetime totals (planned)
 
 GET /api/analytics/revenue accepts vehicleId, from, to, page and pageSize. Return {series, rankings, page, pageSize, total, from, to, timezone}. series is for one selected vehicle, with entries {vehicleId, date, dailyRevenue, movingAverage7Days}. If vehicleId is omitted, select the first active vehicle by license plate and ID and return selectedVehicleId; the UI then makes that selection visible. This bounds chart size. rankings are paginated entries {vehicleId, licensePlate, date, dailyRevenue, movingAverage7Days, rank}, ordered by date descending, rank then vehicle ID. With a vehicleId filter they retain that vehicle's rank among the whole fleet.
 
@@ -136,4 +138,4 @@ All errors use {error: {code, message}}. Treat FAILED procedure output as an err
 | 503 | DATABASE_UNAVAILABLE | The data service is unavailable. Try again shortly. |
 | 500 | INTERNAL_ERROR | The request could not be completed. |
 
-Implement and test these contracts in the next step. The current repository does not expose these routes.
+The core browsing, booking, status and wallet routes are implemented and tested. Analytics, nearby search and review routes remain planned.
