@@ -1,6 +1,6 @@
 # Team 10 API endpoints
 
-All routes below are implemented and tested. The frontend is still pending. See [setup instructions](../api/README.md).
+All routes below are implemented and tested. The six screens in web/ now use these routes. See [setup instructions](../api/README.md).
 
 The browser talks only to the API. The API calls PostgreSQL procedures/views and MongoDB aggregations. Demo rider switching is sufficient; real login is outside the required scope. Validate IDs, coordinates, fares, filters and status transitions on the server.
 
@@ -28,7 +28,7 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 - Lists default to 25 rows; cap pageSize at 100. Filter and paginate in the database. Keep the sort order consistent. Use the ID to sort records with the same value. The rider dropdown should also search and load one page at a time.
 - Booking errors return `{error: {code, message}}`: e.g. INSUFFICIENT_BALANCE, ACTIVE_TRIP_EXISTS, INVALID_INPUT, NOT_FOUND. API code maps procedure output statuses/constraint names to friendly messages and does not expose raw database errors.
 - The stored procedures finish their own transactions. Call them directly without starting another transaction around them (autocommit). A returned FAILED status is a failure even when the driver does not throw. Verify completion state because the inherited completion procedure uses notices on failure.
-- Reject duplicate submission while booking is pending. If the connection fails, the booking may still have succeeded. Check the rider's trip and balance before allowing a retry. Concurrent booking, completion and wallet top-up cases are covered by tests/test_api.py. The web form retry behavior is still pending.
+- Reject duplicate submission while booking is pending. If the connection fails, the booking may still have succeeded. Check the rider's trip and balance before allowing a retry. Concurrent booking, completion and wallet top-up cases are covered by tests/test_api.py. The web form locks further writes until saved trips and wallet have been read after a lost reply.
 - The chart data uses seven calendar days, including zero-revenue dates. SQL 08 adds the function described below and preserves the inherited view. Keep DENSE_RANK in SQL.
 - Nearby search uses the latest ping per vehicle before applying availability, freshness and radius checks. Fresh means within two hours, matching the inherited TTL (automatic expiry). Poll every 10 seconds; do not overlap requests. Use $geoNear to calculate distance.
 - Use GeoJSON coordinate order [longitude, latitude]. Default demo origin matches the Hyderabad seeder; no real user location is needed.
@@ -138,4 +138,4 @@ All errors use {error: {code, message}}. Treat FAILED procedure output as an err
 | 503 | DATABASE_UNAVAILABLE | The data service is unavailable. Try again shortly. |
 | 500 | INTERNAL_ERROR | The request could not be completed. |
 
-All API routes are implemented and tested. Frontend screens, browser checks and full-scale checks remain pending.
+All API routes are implemented and tested. Frontend screens and small-dataset browser checks are complete. Full-scale checks remain pending.

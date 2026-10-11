@@ -15,7 +15,6 @@
   },
   "independentReview": "The verifier passed both suites and separately checked calendar averages/ranks, refresh rollback and locks, latest-ping filters, more than 100 rejected map candidates, review dates/pages and small-fixture Mongo index use.",
   "pending": [
-    "Web frontend and browser tests",
     "Large dataset checks",
     "Demo recording and submission package"
   ],
@@ -43,5 +42,10 @@
       "nearbyCount": 0,
       "note": "Seeded pings expired after two hours; the live map response is empty. Latest-ping and map distance checks passed in isolated tests."
     }
+  },
+  "frontendFollowUp": {
+    "checkedAt": "2026-10-11T10:57:51.576895+00:00",
+    "report": "docs/frontend_verification.json",
+    "note": "The six frontend screens and small-dataset browser checks are now complete. The API regression suite again passed all 60 checks."
   }
 }

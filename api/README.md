@@ -16,7 +16,7 @@ For an already-seeded database, follow the main README commands for SQL 03, 04, 
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 ~~~
 
-Open http://127.0.0.1:8000/docs for the request forms. GET /api/health checks both databases. The server allows the future web app at localhost:5173 and 127.0.0.1:5173; WEB_ORIGINS can set a comma-separated list of other local origins.
+Open http://127.0.0.1:8000/docs for the request forms. GET /api/health checks both databases. The server allows the web app at localhost:5173 and 127.0.0.1:5173; WEB_ORIGINS can set a comma-separated list of other local origins.
 
 ## What works
 
@@ -44,6 +44,6 @@ python tests/backend_smoke.py
 
 The API suite needs a local PostgreSQL role that can create test databases. It creates unique ridesync_api_test_* PostgreSQL and MongoDB databases and removes only those databases at the end. The existing smoke test keeps its separate ridesync_verify_* databases for inspection.
 
-The API suite currently passes 60 checks, including concurrent wallet updates, calendar-day revenue gaps, fleet-rank ties, refresh contention/failure, outdated pings, map result limits, review date boundaries and database outages. The backend suite passes 29 checks, including setup of the two new SQL scripts. A test-client dependency warning remains; it does not fail the tests. These checks use small datasets. Large dataset checks and browser UI tests are still pending.
+The API suite currently passes 60 checks, including concurrent wallet updates, calendar-day revenue gaps, fleet-rank ties, refresh contention/failure, outdated pings, map result limits, review date boundaries and database outages. The backend suite passes 29 checks, including setup of the two new SQL scripts. A test-client dependency warning remains; it does not fail the tests. These checks use small datasets. Large dataset checks are still pending. Browser UI checks are documented in ../web/README.md.
 
-The actual web screens are the next step. The /docs page is for checking the API, not the assignment's finished frontend. Nearby responses are empty after seeded pings expire; fresh pings are needed for a later demo. No seeded trips or wallets were changed by this API update.
+The working assignment screens are in web/; run them at http://127.0.0.1:5173. The /docs page remains available for checking API requests. Nearby responses are empty after seeded pings expire; fresh pings are needed for a later demo. No seeded trips or wallets were changed by this API update.

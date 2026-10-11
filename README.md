@@ -2,9 +2,9 @@
 
 Team repository: [Atharvojha/Ride_Booking_21](https://github.com/Atharvojha/Ride_Booking_21). Inherited source: [amaan070/Ride_Booking_21](https://github.com/amaan070/Ride_Booking_21), starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`. All 23 inherited commits are preserved.
 
-We checked the database scripts and fixed the problems we found. The API now covers browsing, booking, trip status changes, wallet history, revenue, nearby vehicles and reviews. The web frontend is still pending. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [API endpoints and remaining plan](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
+We checked the database scripts and fixed the problems we found. The API now covers browsing, booking, trip status changes, wallet history, revenue, nearby vehicles and reviews. The React frontend now connects all six required screens to this API. See [handover note](docs/handover_note.md), [verification results](docs/backend_verification.json), and [API endpoints and remaining plan](docs/api_endpoints.md). The Figma prototype is the design reference, not a connected application.
 
-Current assignment work: [assignment2/backend-audit](https://github.com/Atharvojha/Ride_Booking_21/tree/assignment2/backend-audit). The earlier backend, design and booking work is in main. The latest workflow API changes are on this branch for review.
+Backend and API work has been merged into main. The frontend is on [assignment2/frontend](https://github.com/Atharvojha/Ride_Booking_21/tree/assignment2/frontend) for review.
 
 ## Current setup (macOS/Linux)
 
@@ -57,7 +57,21 @@ These update the wallet procedures, add the revenue query and refresh-time recor
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 ~~~
 
-Open [API docs](http://127.0.0.1:8000/docs) to try requests. See [API setup](api/README.md) and [API check results](docs/api_verification.json). FastAPI lets us keep the server small and reuse the inherited database procedures. React, Vite, plain CSS and Leaflet remain the frontend choices.
+Open [API docs](http://127.0.0.1:8000/docs) to try requests. See [API setup](api/README.md) and [API check results](docs/api_verification.json). FastAPI lets us keep the server small and reuse the inherited database procedures. The frontend uses React, Vite, plain CSS, Leaflet and small SVG/CSS charts.
+
+## Run the frontend
+
+Keep the API running in one VS Code terminal. In a second terminal, from the repository root:
+
+~~~sh
+cd web
+npm ci
+npm run dev
+~~~
+
+Open [RideSync](http://127.0.0.1:5173). Vite sends /api requests to the local API at port 8000. Choose a demo rider in the header. Browse has riders, vehicles and trips; trip details let you start and complete a trip. The other screens cover booking, wallet history, revenue, nearby vehicles and reviews. A nearby search can be empty because telemetry expires after two hours.
+
+Node 26.8.2 was used for these checks. See [frontend setup and tests](web/README.md) and [frontend check results](docs/frontend_verification.json). The map uses OpenStreetMap tiles with visible attribution. If tiles fail, the result list still shows coordinates and distances.
 
 ## Backend checks
 
@@ -78,11 +92,11 @@ The script creates unique `ridesync_verify_*` databases, uses a small sample dat
 - Booking now rejects inactive vehicles and invalid fares in the procedure, returns the exact trigger-created audit ID, and uses that row for before/after balances. Seeded trips use active vehicles. Completion locks the wallet before the trip and records the actual audit time, so a concurrent top-up does not reorder the running balance.
 - The booking procedures finish their own database transactions. The API must call them directly, without starting another transaction around them. The inherited view averages seven revenue rows. The new api_vehicle_revenue function keeps that window-query approach but averages seven calendar days, including zero-revenue days, and ranks each day across the whole fleet.
 - Summary refreshes now save their successful time and allow only one refresh at a time. Nearby search checks the latest ping before availability/radius/freshness filters and removes inactive or missing vehicles before limiting results. Review summaries and pages use Mongo aggregation filters.
-- Demo user switching is planned. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. The design uses INR and a user-entered fare; route fields and cancellation are outside the required demo.
+- The header provides searchable demo rider switching. Current trip statuses are REQUESTED, IN TRANSIT and COMPLETED. The design uses INR and a user-entered fare; route fields and cancellation are outside the required demo.
 
 ## Submission checklist (pending)
 
-Wireframes and user descriptions are saved in docs/design/. Build web/, complete meaningful UI tests and scale checks, and record a demo of at most five minutes. Before submission, update the actual contribution table, demo link and final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
+Wireframes and user descriptions are saved in docs/design/. The frontend and small-dataset UI checks are complete. Full-scale checks and a demo of at most five minutes are still pending. Before submission, update the actual contribution table, demo link and final commit hash. Package one `10_a1b.zip` strictly under 20 MB, excluding dependencies, caches, build output, credentials and database dumps.
 
 Team members will be added to the contribution table when details are provided; record each person's actual design and code work. Collaborator access is managed by the team owner.
 

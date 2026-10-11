@@ -8,3 +8,6 @@ dist/
 .DS_Store
 
 .pytest_cache/
+
+/web/test-results/
+/web/playwright-report/
