@@ -1,6 +1,7 @@
 import os
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from threading import Barrier, Event
@@ -36,7 +37,10 @@ def database():
         with conn.cursor() as cur:
             for path in sorted((ROOT / 'sql').glob('*.sql')):
                 cur.execute(path.read_text())
-        client[name].create_collection('VehicleMetadata')
+        for script in ('01_collections_and_indexes.js', '04_api_indexes.js'):
+            subprocess.run(['mongosh', os.getenv('MONGO_URI', 'mongodb://localhost:27017'),
+                            '--quiet', '--file', str(ROOT / 'mongo' / script)],
+                           check=True, capture_output=True, text=True, env=os.environ.copy())
         yield conn, client[name]
     finally:
         conn.close()
@@ -318,3 +322,186 @@ def test_completion_waiting_for_topup_keeps_audit_order(browser, records, databa
     assert [(row['actionType'], row['amountChanged'], row['balanceAfter']) for row in data['items']] == [
         ('ESCROW_HOLD', '-100.00', '400.00'), ('CREDIT', '50.00', '450.00'),
         ('ESCROW_RELEASE', '0.00', '450.00')]
+
+
+
+def test_calendar_revenue_and_whole_fleet_ranks(browser, records, database):
+    rider, vehicle, tied = records
+    high = str(uuid4())
+    with database[0].cursor() as cur:
+        cur.execute("INSERT INTO vehicles(id,license_plate,class) VALUES(%s,%s,'Sedan')", [high, 'H' + high[:12]])
+        for chosen, fare, stamp, status in [
+            (vehicle, 70, '2026-09-01T12:00:00Z', 'COMPLETED'),
+            (tied, 70, '2026-09-01T12:00:00Z', 'COMPLETED'),
+            (high, 140, '2026-09-07T12:00:00Z', 'COMPLETED'),
+            (vehicle, 999, '2026-09-07T12:00:00Z', 'REQUESTED'),
+        ]:
+            cur.execute('INSERT INTO trips(rider_id,vehicle_id,fare_amount,created_at,status) VALUES(%s,%s,%s,%s,%s)',
+                        [rider, chosen, fare, stamp, status])
+    params = {'vehicleId': vehicle, 'from': '2026-09-07', 'to': '2026-09-09', 'pageSize': 1}
+    result = browser.get('/api/analytics/revenue', params=params).json()
+    assert result['selectedVehicleId'] == vehicle and result['timezone'] == 'Asia/Kolkata'
+    assert result['total'] == 3 and len(result['rankings']) == 1
+    assert [row['dailyRevenue'] for row in result['series']] == ['0.00'] * 3
+    assert [row['movingAverage7Days'] for row in result['series']] == ['10.00', '0.00', '0.00']
+    params['page'] = 3
+    row = browser.get('/api/analytics/revenue', params=params).json()['rankings'][0]
+    assert row['date'] == '2026-09-07' and row['rank'] == 2
+    params.update(vehicleId=tied)
+    assert browser.get('/api/analytics/revenue', params=params).json()['rankings'][0]['rank'] == 2
+    params['page'] = 4
+    assert browser.get('/api/analytics/revenue', params=params).json()['rankings'] == []
+
+
+def test_revenue_uses_local_days(browser, records, database):
+    rider, vehicle, _ = records
+    with database[0].cursor() as cur:
+        cur.execute("INSERT INTO trips(rider_id,vehicle_id,fare_amount,status,created_at) VALUES(%s,%s,7,'COMPLETED','2026-08-31T18:30:00Z')", [rider, vehicle])
+    result = browser.get('/api/analytics/revenue', params={'vehicleId': vehicle, 'from': '2026-08-31', 'to': '2026-09-01'}).json()
+    assert [row['dailyRevenue'] for row in result['series']] == ['0.00', '7.00']
+    assert result['series'][1]['movingAverage7Days'] == '1.00'
+
+
+def test_summary_refresh_and_unknown_time(browser, records, database):
+    rider, vehicle, _ = records
+    params = {'vehicleId': vehicle}
+    before = browser.get('/api/analytics/summary', params=params).json()
+    assert before['lastRefreshedAt'] is None and before['total'] == 0
+    with database[0].cursor() as cur:
+        for status, fare in [('COMPLETED', 12), ('REQUESTED', 100)]:
+            cur.execute('INSERT INTO trips(rider_id,vehicle_id,fare_amount,status) VALUES(%s,%s,%s,%s)', [rider, vehicle, fare, status])
+    response = browser.post('/api/analytics/refresh')
+    assert response.status_code == 200
+    stamp = response.json()['lastRefreshedAt']
+    assert stamp.endswith('Z')
+    result = browser.get('/api/analytics/summary', params=params).json()
+    assert result['lastRefreshedAt'] == stamp and result['total'] == 1
+    assert result['totals'] == {'lifetimeTripCount': 2, 'lifetimeEarnings': '12.00'}
+    assert result['items'][0]['lifetimeTripCount'] == 2
+    params.update(page=2, pageSize=1)
+    later = browser.get('/api/analytics/summary', params=params).json()
+    assert later['items'] == [] and later['totals'] == result['totals']
+
+
+def test_refresh_lock_and_failed_refresh_keep_stamp(browser, database):
+    conn = database[0]
+    before = browser.get('/api/analytics/summary').json()['lastRefreshedAt']
+    with conn.cursor() as cur:
+        cur.execute('SELECT pg_advisory_lock(10,6302)')
+        try:
+            response = browser.post('/api/analytics/refresh')
+            assert response.status_code == 409 and response.json()['error']['code'] == 'REFRESH_IN_PROGRESS'
+        finally:
+            cur.execute('SELECT pg_advisory_unlock(10,6302)')
+        cur.execute('DROP INDEX idx_mv_vehicle_lifetime_stats_vehicle_id')
+        try:
+            assert browser.post('/api/analytics/refresh').status_code == 503
+            assert browser.get('/api/analytics/summary').json()['lastRefreshedAt'] == before
+        finally:
+            cur.execute('CREATE UNIQUE INDEX idx_mv_vehicle_lifetime_stats_vehicle_id ON mv_vehicle_lifetime_stats(vehicle_id)')
+        cur.execute((ROOT / 'sql/07_api_refresh_state.sql').read_text())
+    assert browser.get('/api/analytics/summary').json()['lastRefreshedAt'] == before
+
+
+def test_nearby_uses_latest_ping_before_filters_and_limit(browser, records, database):
+    _, vehicle, inactive = records
+    db = database[1]
+    now = datetime.now(timezone.utc) - timedelta(seconds=5)
+    ids = [str(uuid4()) for _ in range(5)]
+    with database[0].cursor() as cur:
+        for chosen in ids:
+            cur.execute("INSERT INTO vehicles(id,license_plate,class) VALUES(%s,%s,'Sedan')", [chosen, 'N' + chosen[:12]])
+    def ping(chosen, seconds=0, available=True, longitude=78.4867):
+        return {'vehicle_id': chosen, 'created_at': now + timedelta(seconds=seconds),
+                'is_available': available, 'location': {'type': 'Point', 'coordinates': [longitude, 17.3850]}}
+    rows = [ping(inactive), ping('bad-id'), ping(str(uuid4())), ping(vehicle, longitude=78.4877)]
+    rows += [ping(ids[0], -10), ping(ids[0], available=False)]
+    rows += [ping(ids[1], -10), ping(ids[1], longitude=79.4867)]
+    rows += [ping(ids[2], -7300), ping(ids[3], 100)]
+    rows += [ping(ids[4]), ping(ids[4], available=False)]
+    db.TelemetryPings.insert_many(rows)
+    result = browser.get('/api/vehicles/nearby', params={'longitude': 78.4867, 'latitude': 17.3850, 'limit': 1}).json()
+    assert result['radiusMeters'] == 5000 and result['freshnessSeconds'] == 7200
+    assert [row['vehicleId'] for row in result['items']] == [vehicle]
+    assert 100 < result['items'][0]['distanceMeters'] < 110
+    assert result['items'][0]['pingAt'].endswith('Z')
+    db.TelemetryPings.delete_many({})
+
+
+def test_nearby_handles_batches_of_missing_vehicles(browser, records, database):
+    _, vehicle, _ = records
+    now = datetime.now(timezone.utc) - timedelta(seconds=1)
+    ids = [str(uuid4()) for _ in range(105)] + [vehicle]
+    database[1].TelemetryPings.insert_many([
+        {'vehicle_id': chosen, 'created_at': now, 'is_available': True,
+         'location': {'type': 'Point', 'coordinates': [78.4867 + index * 0.00001, 17.3850]}}
+        for index, chosen in enumerate(ids)])
+    response = browser.get('/api/vehicles/nearby', params={'longitude': 78.4867, 'latitude': 17.3850, 'limit': 1})
+    assert response.status_code == 200
+    assert [row['vehicleId'] for row in response.json()['items']] == [vehicle]
+    database[1].TelemetryPings.delete_many({})
+
+
+def test_review_facets_local_dates_and_stable_pages(browser, records, database):
+    _, vehicle, _ = records
+    docs = []
+    for rating, stamp, tags in [(1, '2026-09-01T18:29:59+00:00', ['early']),
+                                (5, '2026-09-01T18:30:00+00:00', ['clean', 'safe']),
+                                (3, '2026-09-02T18:29:59+00:00', ['clean']),
+                                (5, '2026-09-02T18:29:59+00:00', ['safe']),
+                                (1, '2026-09-02T18:30:00+00:00', ['late'])]:
+        docs.append({'trip_id': str(uuid4()), 'vehicle_id': vehicle, 'rating': rating,
+                     'feedback_tags': tags, 'created_at': datetime.fromisoformat(stamp)})
+    inserted = database[1].TripReviews.insert_many(docs).inserted_ids
+    params = {'vehicleId': vehicle, 'from': '2026-09-02', 'to': '2026-09-02'}
+    result = browser.get('/api/reviews/summary', params=params).json()
+    assert result['reviewCount'] == 3 and result['averageRating'] == 4.33
+    assert [row['count'] for row in result['ratingDistribution']] == [0, 0, 1, 0, 2]
+    assert result['topTags'] == [{'tag': 'clean', 'count': 2}, {'tag': 'safe', 'count': 2}]
+    params.update(pageSize=1)
+    first = browser.get('/api/reviews', params=params).json()
+    assert first['total'] == 3 and first['items'][0]['id'] == str(inserted[3])
+    assert first['items'][0]['createdAt'] == '2026-09-02T18:29:59Z'
+    params['page'] = 2
+    assert browser.get('/api/reviews', params=params).json()['items'][0]['id'] == str(inserted[2])
+    params['page'] = 10**30
+    last = browser.get('/api/reviews', params=params).json()
+    assert last['items'] == [] and last['total'] == 3
+
+
+def test_empty_review_results(browser, records):
+    params = {'vehicleId': records[1]}
+    result = browser.get('/api/reviews/summary', params=params).json()
+    assert result['reviewCount'] == 0 and result['averageRating'] is None and result['topTags'] == []
+    assert all(row['count'] == 0 for row in result['ratingDistribution'])
+    assert browser.get('/api/reviews', params=params).json()['items'] == []
+
+
+@pytest.mark.parametrize('path,params', [
+    ('/api/analytics/revenue', {'from': '2026-01-01', 'to': '2026-04-01'}),
+    ('/api/analytics/revenue', {'from': '0001-01-01', 'to': '0001-01-07'}),
+    ('/api/analytics/revenue', {'from': '9999-12-31', 'to': '9999-12-31'}),
+    ('/api/analytics/revenue', {'from': '2026-02-30'}),
+    ('/api/analytics/revenue', {'vehicleId': 'bad'}),
+    ('/api/analytics/summary', {'pageSize': 101}),
+    ('/api/reviews', {'from': '2026-09-03', 'to': '2026-09-01'}),
+    ('/api/reviews/summary', {'to': '9999-12-31'}),
+    ('/api/vehicles/nearby', {'longitude': 'NaN', 'latitude': 17}),
+    ('/api/vehicles/nearby', {'longitude': 'Infinity', 'latitude': 17}),
+    ('/api/vehicles/nearby', {'longitude': 181, 'latitude': 17}),
+    ('/api/vehicles/nearby', {'longitude': 78, 'latitude': 91}),
+    ('/api/vehicles/nearby', {'longitude': 78, 'latitude': 17, 'limit': 51}),
+])
+def test_new_routes_reject_invalid_input(browser, path, params):
+    response = browser.get(path, params=params)
+    assert response.status_code == 422 and response.json()['error']['code'] == 'INVALID_INPUT'
+
+
+@pytest.mark.parametrize('path,params', [
+    ('/api/reviews', {}), ('/api/reviews/summary', {}),
+    ('/api/vehicles/nearby', {'longitude': 78.4867, 'latitude': 17.3850}),
+])
+def test_new_routes_report_mongo_outage(browser, monkeypatch, path, params):
+    monkeypatch.setenv('MONGO_URI', 'mongodb://127.0.0.1:27099')
+    response = browser.get(path, params=params)
+    assert response.status_code == 503 and response.json()['error']['code'] == 'DATABASE_UNAVAILABLE'

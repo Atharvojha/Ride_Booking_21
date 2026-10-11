@@ -1,6 +1,6 @@
-# Team 10 API endpoints and remaining plan
+# Team 10 API endpoints
 
-The health, rider, vehicle, trip, booking, status and wallet-audit routes are implemented. Analytics, nearby search and review routes below are still planned. See [setup instructions](../api/README.md).
+All routes below are implemented and tested. The frontend is still pending. See [setup instructions](../api/README.md).
 
 The browser talks only to the API. The API calls PostgreSQL procedures/views and MongoDB aggregations. Demo rider switching is sufficient; real login is outside the required scope. Validate IDs, coordinates, fares, filters and status transitions on the server.
 
@@ -17,9 +17,9 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 | PATCH /api/trips/:id/status | status=IN TRANSIT or COMPLETED | Conditional REQUESTED→IN TRANSIT update; completion via sp_release_escrow; updated trip |
 | GET /api/riders/:id/audit | from, to, page, pageSize | Read-only audit rows with stored balance_after and date-filter opening balance |
 | GET /api/analytics/revenue | vehicleId, from, to, page, pageSize | Moving-average series and DENSE_RANK from the inherited SQL query, extended for calendar days |
-| GET /api/analytics/summary | Vehicle filters, page, pageSize | Materialized-view totals, paginated vehicle stats, persisted lastRefreshedAt |
+| GET /api/analytics/summary | vehicleId, page, pageSize | Materialized-view totals, paginated vehicle stats, persisted lastRefreshedAt |
 | POST /api/analytics/refresh | None | Refresh materialized view; persist timestamp only after successful refresh |
-| GET /api/vehicles/nearby | longitude, latitude | geoNear within 5,000m; distinct fresh vehicles sorted by distance, bounded result count |
+| GET /api/vehicles/nearby | longitude, latitude, limit | geoNear within 5,000m; distinct fresh vehicles sorted by distance, bounded result count |
 | GET /api/reviews/summary | Optional vehicleId/date range | Mongo facet rating distribution, average/count, top tags |
 | GET /api/reviews | Optional vehicleId/date range, page, pageSize | Paginated TripReviews |
 
@@ -29,7 +29,7 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 - Booking errors return `{error: {code, message}}`: e.g. INSUFFICIENT_BALANCE, ACTIVE_TRIP_EXISTS, INVALID_INPUT, NOT_FOUND. API code maps procedure output statuses/constraint names to friendly messages and does not expose raw database errors.
 - The stored procedures finish their own transactions. Call them directly without starting another transaction around them (autocommit). A returned FAILED status is a failure even when the driver does not throw. Verify completion state because the inherited completion procedure uses notices on failure.
 - Reject duplicate submission while booking is pending. If the connection fails, the booking may still have succeeded. Check the rider's trip and balance before allowing a retry. Concurrent booking, completion and wallet top-up cases are covered by tests/test_api.py. The web form retry behavior is still pending.
-- The chart will use seven calendar days, including zero-revenue dates. The SQL view needs the change described below. Keep DENSE_RANK in SQL.
+- The chart data uses seven calendar days, including zero-revenue dates. SQL 08 adds the function described below and preserves the inherited view. Keep DENSE_RANK in SQL.
 - Nearby search uses the latest ping per vehicle before applying availability, freshness and radius checks. Fresh means within two hours, matching the inherited TTL (automatic expiry). Poll every 10 seconds; do not overlap requests. Use $geoNear to calculate distance.
 - Use GeoJSON coordinate order [longitude, latitude]. Default demo origin matches the Hyderabad seeder; no real user location is needed.
 - Wallet running balances come from stored balance_after; a filtered period must not start its balance calculation at zero.
@@ -37,7 +37,7 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 
 ## Shared input and response format
 
-These contracts are used by the implemented routes. Analytics, nearby search and reviews are the next API step. Names in JSON use camelCase; database columns keep their current names. IDs below are UUIDs; MongoDB document IDs are strings.
+These contracts are used by the implemented routes. Names in JSON use camelCase; database columns keep their current names. IDs below are UUIDs; MongoDB document IDs are strings.
 
 - Money is a decimal string with two decimal places, such as "125.50". Validate with decimal arithmetic on the server. Fare must be greater than zero and at most 99,999,999.99. This fits both the fare column and the inherited wallet trigger DECIMAL(10,2) amount variable. Reject extra decimal places, NaN and infinity. Format INR only for display.
 - page starts at 1; pageSize defaults to 25 and must be 1 to 100. Invalid values are errors. Lists return items, page, pageSize and total. A page beyond the end returns an empty items list.
@@ -98,21 +98,21 @@ PATCH /api/trips/:id/status accepts {"status": "IN TRANSIT"} or {"status": "COMP
 
 GET /api/riders/:id/audit accepts from, to, page and pageSize. Return {items, page, pageSize, total, currentBalance, openingBalance}. Rows use the audit-entry fields above. openingBalance is the stored balance immediately before the selected period, not zero. If there is no preceding log but there is a first in-period entry, derive it as balanceAfter minus amountChanged. If the period is before all recorded history and there is no entry to derive from, return null and show Unknown. Use the stored balanceAfter for every displayed running balance. Do not recalculate it from the current page.
 
-## Revenue and lifetime totals (planned)
+## Revenue and lifetime totals
 
 GET /api/analytics/revenue accepts vehicleId, from, to, page and pageSize. Return {series, rankings, page, pageSize, total, from, to, timezone}. series is for one selected vehicle, with entries {vehicleId, date, dailyRevenue, movingAverage7Days}. If vehicleId is omitted, select the first active vehicle by license plate and ID and return selectedVehicleId; the UI then makes that selection visible. This bounds chart size. rankings are paginated entries {vehicleId, licensePlate, date, dailyRevenue, movingAverage7Days, rank}, ordered by date descending, rank then vehicle ID. With a vehicleId filter they retain that vehicle's rank among the whole fleet.
 
-Adapt the inherited SQL window query during the API step as a parameterized query (a regular view does not accept date arguments): create one row for every vehicle/date in the requested range plus the preceding six days, fill missing revenue with zero, and average the current day and preceding six calendar days. Use only COMPLETED fares, consistent with the inherited query. Rank each day's movingAverage7Days across the whole fleet using DENSE_RANK, preserving the inherited ranking metric, before selecting a vehicle or trimming display dates. Equal moving averages give equal rank. Do not calculate either result in browser code.
+SQL 08 adds api_vehicle_revenue as a function accepting dates (a regular view does not accept date arguments). It extends the inherited window query: create one row for every vehicle/date in the requested range plus the preceding six days, fill missing revenue with zero, and average the current day and preceding six calendar days. Use only COMPLETED fares, consistent with the inherited query. Rank each day's movingAverage7Days across the whole fleet using DENSE_RANK, preserving the inherited ranking metric, before selecting a vehicle or trimming display dates. Ranks use the unrounded moving averages; equal unrounded values give equal rank. Two values displayed to two decimal places can look equal while having different ranks. Do not calculate either result in browser code.
 
 GET /api/analytics/summary accepts vehicleId, page and pageSize. Return {items, page, pageSize, total, totals, lastRefreshedAt}. Items have vehicleId, licensePlate, class, isActive, lifetimeTripCount and lifetimeEarnings. totals has lifetimeTripCount and lifetimeEarnings for all matching vehicles, not only the current page. Label trip count as all statuses and earnings as completed trips only. These are lifetime values, not the chart's date-filtered totals.
 
-POST /api/analytics/refresh accepts no body; call the inherited refresh function and return {lastRefreshedAt}. During the API step add a small table to persist the last successful refresh time, initially null (Unknown). Call the existing refresh function and update the timestamp in one database transaction, only after refresh succeeds. Refresh failure keeps the previous time. Serialize refresh requests; while one is running return 409 REFRESH_IN_PROGRESS. GET summary must read totals and their refresh time in one SQL statement or a transaction with a repeatable-read snapshot, so they describe the same refresh.
+POST /api/analytics/refresh accepts no body; call the inherited refresh function and return {lastRefreshedAt}. SQL 07 adds api_refresh_state to save the last successful refresh time, initially null (Unknown). The inherited refresh function now updates that time after the refresh in the same transaction. Both manual function calls and API calls use a shared database lock to keep refreshes from overlapping. Refresh failure keeps the previous time. Serialize refresh requests; while one is running return 409 REFRESH_IN_PROGRESS. GET summary must read totals and their refresh time in one SQL statement or a transaction with a repeatable-read snapshot, so they describe the same refresh.
 
 ## Nearby vehicles
 
 GET /api/vehicles/nearby accepts longitude (-180 to 180), latitude (-90 to 90) and limit (1 to 50, default 50). Radius is fixed at 5000 metres. Return {origin: {longitude, latitude}, radiusMeters: 5000, freshnessSeconds: 7200, checkedAt, items}. Each item has vehicleId, licensePlate, class, longitude, latitude, distanceMeters and pingAt. Order by distance then vehicle ID. The response is bounded; it is not a dump of all telemetry.
 
-Extend the inherited nearest-one pipeline during implementation. First establish each vehicle's latest ping globally, using created_at descending and _id as a tie-breaker. Only then test its availability, age and distance. If $geoNear runs first, verify every candidate against the globally latest ping before applying the result limit; a newer unavailable or outside-radius ping must exclude the older candidate. Do not group only available or nearby pings and call those latest. MongoDB determines the distance with $geoNear, using GeoJSON [longitude, latitude]. SQL can supply vehicle labels and exclude inactive/missing vehicles. Document and inspect the query plan at scale.
+The API extends the inherited nearest-one pipeline with a latest-ping check and an active-vehicle list. First establish each vehicle's latest ping globally, using created_at descending and _id as a tie-breaker. Only then test its availability, age and distance. If $geoNear runs first, verify every candidate against the globally latest ping before applying the result limit; a newer unavailable or outside-radius ping must exclude the older candidate. Do not group only available or nearby pings and call those latest. MongoDB determines the distance with $geoNear, using GeoJSON [longitude, latitude]. SQL can supply vehicle labels and exclude inactive/missing vehicles. Mongo 04 adds latest-ping and review indexes. The independent small-fixture plan used both the geospatial and latest-ping indexes; full-scale query-plan and timing checks remain pending.
 
 The UI uses a Hyderabad demo origin from the seeder, with editable coordinates. No real user location permission is needed. Poll every 10 seconds and display the last successful response time. Pause polling while the screen is hidden. Two hours is a demo assumption matching the telemetry expiry; this is not a claim that such positions are suitable for a real ride service.
 
@@ -138,4 +138,4 @@ All errors use {error: {code, message}}. Treat FAILED procedure output as an err
 | 503 | DATABASE_UNAVAILABLE | The data service is unavailable. Try again shortly. |
 | 500 | INTERNAL_ERROR | The request could not be completed. |
 
-The core browsing, booking, status and wallet routes are implemented and tested. Analytics, nearby search and review routes remain planned.
+All API routes are implemented and tested. Frontend screens, browser checks and full-scale checks remain pending.
