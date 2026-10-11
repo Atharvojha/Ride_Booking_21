@@ -33,7 +33,7 @@ Two kinds of users: a **rider** (books trips, checks their wallet) and a **fleet
 | Book a Trip | Pick a rider and an active vehicle, enter a fare, see the balance before and after and the new wallet audit entry; friendly messages for low balance and for a second active trip | `sp_book_trip`, the wallet audit trigger and the partial unique index |
 | Wallet Audit | See a rider's wallet history with a date filter and the saved running balance | `wallet_audit_logs` |
 | Vehicle Analytics | Seven-day moving-average chart, daily `DENSE_RANK` table, lifetime totals with a "last refreshed" time and a refresh button | window-function query, materialized view |
-| Nearby Vehicles | Pick an origin on the map; vehicles within 5 km sorted by distance; new positions appear without reloading (polling) | MongoDB `$geoNear` |
+| Nearby Vehicles | Type an origin (longitude and latitude); see vehicles within 5 km on a map and in a list sorted by distance; new positions appear without reloading (polling) | MongoDB `$geoNear` |
 | Trip Reviews | Rating distribution, average, top tags, review list and a vehicle's flexible metadata (features, inspections) | MongoDB `$facet`, `VehicleMetadata` |
 
 Every screen shows loading, empty and error messages, and works on a laptop and on a phone. Endpoint inputs and outputs are in [docs/api_endpoints.md](docs/api_endpoints.md).
@@ -51,7 +51,7 @@ These were taken by the browser tests, using small temporary test records (not r
 
 ## Setup
 
-**You need:** PostgreSQL, MongoDB, `mongosh`, Python 3.11 or newer, Node.js and Git. Both databases must be running. Your PostgreSQL role must be allowed to create databases. We did not provide a `docker-compose.yml`.
+**You need:** PostgreSQL, MongoDB, `mongosh`, Python 3.11 or newer (we used 3.13), Node.js 20.19 or newer (we used 26.8) and Git. Both databases must be running. Your PostgreSQL role must be allowed to create databases. We did not provide a `docker-compose.yml`.
 
 ### 1. Create and fill the databases
 
@@ -72,12 +72,12 @@ python data_generation/mongo_seeder.py
 psql -v ON_ERROR_STOP=1 -c 'SELECT refresh_mv_vehicle_lifetime_stats();'
 ```
 
-Stop if any step shows an error. Notes:
+Stop if any step shows an error. Lines such as `NOTICE: ... does not exist, skipping` are normal. Notes:
 
 - `.env` holds your passwords and is not committed. `.env.example` makes a small dataset (100 riders, 40 vehicles, 100 trips, 1,000 pings). The inherited full size is `NUM_RIDERS=100000 NUM_VEHICLES=40000 NUM_TRIPS=50000 NUM_PINGS=520000`; see [the full-size report](docs/scale_verification.md).
 - The PostgreSQL seeder also writes vehicle metadata to MongoDB, so start both databases first.
 - The seeders only add data. Running them again does not reset anything. Use a new database to start over.
-- Vehicle positions (pings) are deleted after two hours, so the map is empty after that. To add fresh pings run `python data_generation/refresh_demo_pings.py` (add `--dry-run` to see the plan first). Do not run `mongo_seeder.py` again for this, because it adds the reviews a second time.
+- **Nearby Vehicles shows few or no vehicles right after the small seed.** Vehicle positions (pings) are also deleted after two hours. To add fresh ones run `python data_generation/refresh_demo_pings.py` (add `--dry-run` to see the plan first). It adds 25 pings for 25 active vehicles, of which about 19 should appear on the map. Do not run `mongo_seeder.py` again for this, because it adds the reviews a second time. A vehicle's newest ping is the one that counts, so a few helper pings can be hidden if you run it within minutes of seeding.
 
 ### 2. Start the API
 
@@ -107,6 +107,7 @@ If your database was made from the original Assignment 1 scripts, apply the chan
 for script in sql/03_triggers_and_audit.sql sql/04_stored_procedures.sql sql/07_api_refresh_state.sql sql/08_api_revenue.sql; do
   psql -v ON_ERROR_STOP=1 -f "$script" || break
 done
+mongosh "$MONGO_URI" --quiet --file mongo/01_collections_and_indexes.js
 mongosh "$MONGO_URI" --quiet --file mongo/04_api_indexes.js
 ```
 
@@ -119,7 +120,7 @@ mongosh "$MONGO_URI" --quiet --file mongo/04_api_indexes.js
 | `python -m pytest tests/test_demo_pings.py -q` | The fresh-ping helper (9 tests) |
 | `cd web && npm test` | Front-end unit tests (23 tests) |
 | `cd web && npm run test:browser` | Nine browser tests with the real API and temporary databases. Needs Chrome and free ports 8001 and 5174. Set `RIDESYNC_TEST_PYTHON` to your Python path. |
-| `python tests/scale_check.py ...` | Full-size checks (75 checks), described in [docs/scale_verification.md](docs/scale_verification.md) |
+| `tests/scale_check.py` | Full-size checks (75 checks). It needs seeded full-size databases, so it is explained, with its command, in [docs/scale_verification.md](docs/scale_verification.md) |
 
 The API and browser tests create their own databases and remove them. `backend_smoke.py` keeps its `ridesync_verify_*` databases so you can inspect them. Some browser failures (a lost reply, a service outage) are simulated on purpose.
 
@@ -150,9 +151,11 @@ The API and browser tests create their own databases and remove them. `backend_s
 |---|---|---|
 | `mongo/02_workflow_geonear.js` | Made it a runnable `mongosh` function with a Hyderabad demo call | The original failed under `mongosh` |
 | `mongo/01_collections_and_indexes.js` | Fixed the `VehicleMetadata` index name; collection setup can be repeated | The index used the wrong capital letter, so it indexed nothing |
+| `mongo/03_workflow4_facet.js` | The database name comes from `MONGO_DB` | Matches the other scripts |
 | `mongo/04_api_indexes.js` (new) | Indexes for each vehicle's newest ping and for review filters | Fast latest-ping and review lookups |
 | `data_generation/*_seeder.py` | Connection settings come from `.env`; dataset sizes are settings | One seeder had a password in the code, the other asked for it |
-| `data_generation/postgres_seeder.py` | Wallet top-ups update the real wallet; trips use active vehicles | Top-ups only changed a number in memory, so the audit trigger never ran |
+| `data_generation/postgres_seeder.py` | Wallet top-ups update the real wallet; trips use active vehicles; it reads the new third value (audit ID) from `sp_book_trip` | Top-ups only changed a number in memory, so the audit trigger never ran |
+| `data_generation/refresh_demo_pings.py` (new) | Adds fresh vehicle pings and nothing else | Pings expire after two hours; rerunning `mongo_seeder.py` would add the reviews again |
 | `sql/03_triggers_and_audit.sql` | The trigger records the real write time and gives the new audit ID to the procedure | The API must show the exact audit row |
 | `sql/04_stored_procedures.sql` | Booking checks the fare and the vehicle and returns the audit ID; completion locks the wallet before the trip | Safer input, exact audit entry, same lock order in both procedures |
 | `sql/07_api_refresh_state.sql` (new) | The refresh saves its time and allows one refresh at a time | The "last refreshed" time and no overlapping refreshes |
@@ -171,6 +174,7 @@ docs/
   api_endpoints.md        every endpoint with inputs and outputs
   design/                 users, wireframes, screenshots
   scale_verification.md   full-size results, timings and query plans
+  (other files)           test reports (*.json), query plans, a detailed history, the original ERD and schema map
 sql/  mongo/  data_generation/   the Assignment 1 scripts plus our fixes
 api/                      FastAPI server
 web/                      React application
@@ -269,7 +273,7 @@ Ride_Booking_21/
 │   └── mongo_output.txt
 │
 └── docs/
-    ├── relational_erd.png
+    ├── relational_erd.jpeg
     └── mongo_schema_map.json
 ```
 

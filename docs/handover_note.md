@@ -13,7 +13,7 @@ All six SQL scripts ran on PostgreSQL 17. With the original seeders on a small d
 - **Passwords:** one seeder had a password in the code and the other asked for it. Both now read `.env`, which is not committed.
 - **Seeder top-ups** only changed a number in memory, so the real wallet and the audit trigger never saw them. They now update the database.
 - **Seven-day average** used seven rows, not seven days, so it could reach back weeks. `sql/08_api_revenue.sql` uses calendar days, counts empty days as zero and ranks the whole fleet. The original view is kept.
-- **Booking** now checks the fare and the vehicle and returns the exact audit row it caused. Completion locks the wallet before the trip, like booking does. The refresh time is now saved. The README lists every changed file.
+- **Booking** now checks the fare and the vehicle and returns the exact audit row it caused. Completion locks the wallet before the trip, like booking does. The refresh time is now saved. The README has a table of every changed file.
 
 ## What we built
 

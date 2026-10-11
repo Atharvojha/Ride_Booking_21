@@ -8,7 +8,7 @@ reviews, vehicle metadata or anything in PostgreSQL.
     python data_generation/refresh_demo_pings.py --dry-run   # show the plan only
     python data_generation/refresh_demo_pings.py             # insert the pings
 
-Each chosen vehicle gets one ping stamped with the current UTC time (a few seconds in the
+Each chosen vehicle gets one ping stamped with the current UTC time (up to 10 seconds in the
 past, never in the future). Some vehicles are placed on purpose where they should NOT appear
 on the map, so the demo can show the rules:
   - "unavailable": inside the 5 km radius but is_available is false.
@@ -65,7 +65,7 @@ def build_pings(vehicle_ids, origin, now, rng, unavailable=3, outside=3):
             "vehicle_id": str(vehicle_id),
             "is_available": is_available,
             "location": {"type": "Point", "coordinates": [longitude, latitude]},  # longitude first
-            "created_at": now.replace(microsecond=0) - timedelta(seconds=rng.randint(0, 120)),
+            "created_at": now.replace(microsecond=0) - timedelta(seconds=rng.randint(0, 10)),
         })
     return pings
 
