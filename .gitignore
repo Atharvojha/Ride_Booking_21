@@ -11,3 +11,6 @@ dist/
 
 /web/test-results/
 /web/playwright-report/
+
+# Local assistant instructions (kept on the author machine only)
+AGENTS.md

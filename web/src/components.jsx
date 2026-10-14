@@ -20,9 +20,9 @@ export function Notice({ children, kind = 'info', onRetry }) {
   </div>
 }
 
-export function Feedback({ query, empty, hasRows }) {
+export function Feedback({ query, empty, hasRows, quiet = false }) {
   return <>{query.loading && <p className="muted" role="status">Loading…</p>}
-    {query.error && <Notice kind="error" onRetry={query.reload}>{query.error.message}{query.data ? ' Showing the last result; it may be out of date.' : ''}</Notice>}
+    {query.error && !quiet && <Notice kind="error" onRetry={query.reload}>{query.error.message}{query.data ? ' Showing the last result; it may be out of date.' : ''}</Notice>}
     {!query.loading && !query.error && query.data && !hasRows && <div className="empty">{empty}</div>}</>
 }
 
@@ -35,8 +35,8 @@ export function Pager({ page, pageSize = 25, total, onPage, disabled = false }) 
 
 export function Table({ label, columns, rows }) {
   return <div className="table-scroll" tabIndex="0" role="region" aria-label={label}>
-    <table><caption className="sr-only">{label}</caption><thead><tr>{columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr></thead>
-      <tbody>{rows.map((row, index) => <tr key={row.id || (row.vehicleId ? row.vehicleId + (row.date || '') : index)}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}</tbody></table>
+    <table><caption className="sr-only">{label}</caption><thead><tr>{columns.map(column => <th key={column.key} scope="col" className={column.sticky ? 'sticky-end' : undefined}>{column.label}</th>)}</tr></thead>
+      <tbody>{rows.map((row, index) => <tr key={row.id || (row.vehicleId ? row.vehicleId + (row.date || '') : index)}>{columns.map(column => <td key={column.key} className={column.sticky ? 'sticky-end' : undefined}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}</tbody></table>
   </div>
 }
 

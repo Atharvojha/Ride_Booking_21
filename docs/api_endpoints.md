@@ -129,6 +129,7 @@ All errors use {error: {code, message}}. Treat FAILED procedure output as an err
 | HTTP status | Code | Message example |
 |---|---|---|
 | 422 | INVALID_INPUT | Enter a positive fare with at most two decimal places. |
+| 422 | INVALID_INPUT | Send the fare as text, for example "120.00". (Shown when `fareAmount` is a JSON number instead of text.) |
 | 404 | NOT_FOUND | This rider, vehicle or trip could not be found. |
 | 409 | INSUFFICIENT_BALANCE | This rider does not have enough wallet balance. |
 | 409 | ACTIVE_TRIP_EXISTS | Complete this rider's active trip before booking another. |

@@ -117,6 +117,12 @@ def test_invalid_fares_do_not_change_wallet(browser, records, database, fare):
     assert state(database, records[0]) == (Decimal('500.00'), 0, 0)
 
 
+def test_number_fare_message_says_to_send_text(browser, records, database):
+    message = book(browser, records, 120).json()['error']['message']
+    assert 'as text' in message and '"120.00"' in message
+    assert state(database, records[0]) == (Decimal('500.00'), 0, 0)
+
+
 @pytest.mark.parametrize('path', ['/api/riders/not-a-uuid', '/api/vehicles/not-a-uuid', '/api/trips/not-a-uuid', '/api/riders?pageSize=101', '/api/riders?page=0', '/api/vehicles?active=maybe', '/api/trips?status=CANCELLED', '/api/trips?from=2026-02-30', '/api/trips?from=2026-10-12&to=2026-10-11'])
 def test_bad_filters_have_friendly_errors(browser, path):
     response = browser.get(path)

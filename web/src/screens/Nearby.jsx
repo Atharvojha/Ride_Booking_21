@@ -37,9 +37,11 @@ function VehicleMap({ origin, items, selected, onSelect }) {
     {tileError && <p className="muted">Map tiles could not load. Coordinates and distances are still available in the list.</p>}</>
 }
 
+const DEMO_ORIGIN = { longitude: 78.4867, latitude: 17.3850 }
+
 export default function Nearby() {
   const [inputs, setInputs] = useState({ longitude: '78.4867', latitude: '17.3850' })
-  const [origin, setOrigin] = useState({ longitude: 78.4867, latitude: 17.3850 })
+  const [origin, setOrigin] = useState(DEMO_ORIGIN)
   const [inputError, setInputError] = useState('')
   const [selected, setSelected] = useState(null)
   const query = useQuery(apiUrl('/api/vehicles/nearby', { ...origin, limit: 50 }))
@@ -48,16 +50,17 @@ export default function Nearby() {
     event.preventDefault()
     const longitude = Number(inputs.longitude), latitude = Number(inputs.latitude)
     if (!inputs.longitude.trim() || !inputs.latitude.trim() || !Number.isFinite(longitude) || !Number.isFinite(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
-      setInputError('Enter longitude from −180 to 180 and latitude from −90 to 90.'); return
+      setInputError('Enter longitude from −180 to 180 and latitude from −90 to 90. The list below still shows the last valid origin.'); return
     }
     setInputError(''); setSelected(null); setOrigin({ longitude, latitude })
   }
   const items = query.data?.items || []
+  const isDemoOrigin = origin.longitude === DEMO_ORIGIN.longitude && origin.latitude === DEMO_ORIGIN.latitude
   return <><section className="card"><form className="filters" onSubmit={apply}>
     <label>Longitude<input inputMode="decimal" value={inputs.longitude} onChange={event => setInputs({ ...inputs, longitude: event.target.value })} /></label>
     <label>Latitude<input inputMode="decimal" value={inputs.latitude} onChange={event => setInputs({ ...inputs, latitude: event.target.value })} /></label>
     <button disabled={query.loading}>Find vehicles</button><button className="secondary" type="button" disabled={query.loading} onClick={query.reload}>Refresh positions</button></form>
-    {inputError && <Notice kind="error">{inputError}</Notice>}<p className="muted">Hyderabad demo origin · 5 km radius · Fresh positions from the last two hours.</p></section>
+    {inputError && <Notice kind="error">{inputError}</Notice>}<p className="muted">{isDemoOrigin ? 'Hyderabad demo origin' : 'Custom origin'} ({origin.longitude}, {origin.latitude}) · 5 km radius · Fresh positions from the last two hours.</p></section>
     <div className="map-layout"><section className="card map-card"><h2>Nearby vehicle map</h2><VehicleMap origin={origin} items={items} selected={selected} onSelect={setSelected} /></section>
       <section className="card"><h2>Vehicles by distance</h2><p className="muted">{items.length} vehicles shown · maximum 50</p>
         <Feedback query={query} hasRows={items.length} empty="No fresh available vehicles within 5 km. Demo pings expire after two hours." />

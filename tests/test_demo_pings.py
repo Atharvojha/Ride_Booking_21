@@ -56,7 +56,7 @@ def test_pings_have_geojson_order_and_safe_timestamps():
         longitude, latitude = ping['location']['coordinates']
         assert ping['location']['type'] == 'Point'
         assert abs(longitude - ORIGIN[0]) < 0.2 and abs(latitude - ORIGIN[1]) < 0.2  # longitude comes first
-        assert now - timedelta(seconds=121) <= ping['created_at'] <= now  # never in the future
+        assert now - timedelta(seconds=11) <= ping['created_at'] <= now  # never in the future
         assert set(ping) == {'vehicle_id', 'is_available', 'location', 'created_at'}
 
 

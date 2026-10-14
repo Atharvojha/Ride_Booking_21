@@ -13,7 +13,7 @@ export default function Wallet({ actor }) {
     <p className="muted">Wallet history for <strong>{actor.name}</strong>. Dates use Asia/Kolkata.</p>
     <Feedback query={query} hasRows={true} />{query.data && <div className="stats"><Stat label="Current wallet" value={money(query.data.currentBalance)} /><Stat label="Opening balance for these dates" value={money(query.data.openingBalance)} note="Unknown means there is no earlier saved balance to use." /></div>}
   </section><section className="card"><h2>Wallet changes</h2><p className="muted">Each running balance is the value saved with that wallet change.</p>
-    <Feedback query={query} hasRows={query.data?.items.length} empty="No wallet changes in these dates." />
+    <Feedback query={query} hasRows={query.data?.items.length} empty="No wallet changes in these dates." quiet />
     {query.data?.items.length > 0 && <Table label="Wallet audit trail" rows={query.data.items} columns={[{ key: 'timestamp', label: 'Recorded at', render: row => time(row.timestamp) }, { key: 'actionType', label: 'Action', render: row => row.actionType.replaceAll('_', ' ') }, { key: 'amountChanged', label: 'Change', render: row => <span className={Number(row.amountChanged) < 0 ? 'negative' : 'positive'}>{money(row.amountChanged)}</span> }, { key: 'balanceAfter', label: 'Running balance', render: row => money(row.balanceAfter) }]} />}
     {query.data && <Pager page={page} total={query.data.total} onPage={setPage} disabled={query.loading} />}
   </section></>
