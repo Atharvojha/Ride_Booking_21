@@ -1,6 +1,6 @@
 # Demo video script (target 4 minutes 45 seconds, limit 5 minutes)
 
-**Status: the video has not been recorded yet.** This is the plan and the exact steps. After recording, put the link in the README submission section.
+**Status: a 1-minute video is recorded and saved as [demo/demo.mp4](demo/demo.mp4), linked in the README.** The plan below is for the longer live demonstration (up to 5 minutes) that can be shown or recorded again.
 
 Use one person's voice for the whole video, but every member should be able to take any part. Say what is on the screen; do not read the code.
 

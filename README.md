@@ -8,7 +8,7 @@ RideSync is a ride-booking application. This is **Project P2**. It puts a web fr
 | Team repository | https://github.com/Atharvojha/Ride_Booking_21 |
 | Inherited repository | https://github.com/amaan070/Ride_Booking_21 (starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`, all 23 original commits kept) |
 | Final commit hash | **TO BE FILLED BEFORE SUBMISSION** |
-| Demo video (5 minutes at most) | **TO BE FILLED BEFORE SUBMISSION** |
+| Demo video (5 minutes at most) | [docs/demo/demo.mp4](docs/demo/demo.mp4) (1 minute, 12 MB; GitHub plays it in the browser) |
 
 ## Contents
 
@@ -174,6 +174,7 @@ docs/
   handover_note.md        what worked, what did not, what we changed (about one page)
   api_endpoints.md        every endpoint with inputs and outputs
   design/                 users, wireframes, screenshots
+  demo/demo.mp4           the demo video (1 minute)
   scale_verification.md   full-size results, timings and query plans
   (other files)           test reports (*.json), query plans, a detailed history, the original ERD and schema map
 sql/  mongo/  data_generation/   the Assignment 1 scripts plus our fixes
