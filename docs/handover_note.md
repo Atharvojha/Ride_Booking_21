@@ -17,7 +17,7 @@ All six SQL scripts ran on PostgreSQL 17. With the original seeders on a small d
 
 ## What we built
 
-A FastAPI server (`api/`, inputs and outputs in [api_endpoints.md](api_endpoints.md)) and a React app (`web/`) with the six required screens: Browse Data, Book a Trip, Wallet Audit, Vehicle Analytics, Nearby Vehicles and Trip Reviews. Business rules stay in the databases; the web app does not calculate money or ranks. Users and wireframes are in [design/](design/README.md). Setup is in the [README](../README.md). Tests: 62 API, 23 front-end, 9 browser tests and 75 full-size checks all pass. Full-size results are in [scale_verification.md](scale_verification.md).
+A FastAPI server (`api/`, inputs and outputs in [api_endpoints.md](api_endpoints.md)) and a React app (`web/`) with the six required screens: Browse Data, Book a Trip, Wallet Audit, Vehicle Analytics, Nearby Vehicles and Trip Reviews. Business rules stay in the databases; the web app does not calculate money or ranks. Users and wireframes are in [design/](design/README.md). Setup is in the [README](../README.md). Tests: 63 API, 24 front-end, 9 browser tests and 75 full-size checks all pass. Full-size results are in [scale_verification.md](scale_verification.md).
 
 ## Assumptions
 
