@@ -79,6 +79,15 @@ def seed(conn, db):
             trip = str(cur.fetchone()[0])
             db.TripReviews.insert_one(dict(trip_id=trip, vehicle_id=vehicles[0], rating=4 + index % 2,
                                            feedback_tags=['safe', 'on_time'], created_at=now - timedelta(days=index)))
+        # Extra completed trips over the last four weeks so the revenue chart and ranking look like real use.
+        for day in range(0, 28):
+            for index in range(1, 7):
+                if (day + index) % 2 == 0:
+                    cur.execute("INSERT INTO trips(rider_id,vehicle_id,fare_amount,status,created_at) VALUES(%s,%s,%s,'COMPLETED',%s)",
+                                (rider_ids[10 + (day + index) % 40], vehicles[index], 40 + 15 * index + (day * 7) % 30, now - timedelta(days=day)))
+            if day >= 7 and day % 2 == 1:
+                cur.execute("INSERT INTO trips(rider_id,vehicle_id,fare_amount,status,created_at) VALUES(%s,%s,%s,'COMPLETED',%s)",
+                            (rider_ids[10 + day % 40], vehicles[0], 55 + (day * 5) % 40, now - timedelta(days=day)))
         cur.execute('REFRESH MATERIALIZED VIEW mv_vehicle_lifetime_stats')
     db.VehicleMetadata.insert_one(dict(vehicle_id=vehicles[0], features=dict(wifi=True, pet_friendly=False),
                                        inspection_records=[dict(date=now, passed=True)], created_at=now))

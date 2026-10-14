@@ -33,10 +33,10 @@ export function Pager({ page, pageSize = 25, total, onPage, disabled = false }) 
       <button className="secondary" disabled={disabled || page * pageSize >= total} onClick={() => onPage(page + 1)}>Next</button></div></div>
 }
 
-export function Table({ label, columns, rows }) {
+export function Table({ label, columns, rows, rowClass }) {
   return <div className="table-scroll" tabIndex="0" role="region" aria-label={label}>
     <table><caption className="sr-only">{label}</caption><thead><tr>{columns.map(column => <th key={column.key} scope="col" className={column.sticky ? 'sticky-end' : undefined}>{column.label}</th>)}</tr></thead>
-      <tbody>{rows.map((row, index) => <tr key={row.id || (row.vehicleId ? row.vehicleId + (row.date || '') : index)}>{columns.map(column => <td key={column.key} className={column.sticky ? 'sticky-end' : undefined}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}</tbody></table>
+      <tbody>{rows.map((row, index) => <tr key={row.id || (row.vehicleId ? row.vehicleId + (row.date || '') : index)} className={rowClass?.(row)}>{columns.map(column => <td key={column.key} className={column.sticky ? 'sticky-end' : undefined}>{column.render ? column.render(row) : row[column.key]}</td>)}</tr>)}</tbody></table>
   </div>
 }
 
