@@ -70,6 +70,9 @@ table { width: 100%; border-collapse: collapse; text-align: left; white-space: n
 th { color: #8490a4; background: #f8f9fc; text-transform: uppercase; font-size: 10px; letter-spacing: .6px; font-weight: 700; padding: 13px 16px; border-block: 1px solid #e7ebf1; }
 td { padding: 15px 16px; border-bottom: 1px solid #e9edf3; }
 tr:hover td { background: #fafbfe; }
+th.sticky-end, td.sticky-end { position: sticky; right: 0; background: white; box-shadow: -6px 0 6px -6px #16264e26; }
+th.sticky-end { background: #f8f9fc; }
+tr:hover td.sticky-end { background: #fafbfe; }
 .id { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; color: #536987; }
 .badge { display: inline-block; border-radius: 20px; padding: 4px 10px; font-size: 10px; font-weight: 700; letter-spacing: .3px; }
 .badge.green { background: #eaf7f0; color: #18794e; }.badge.blue { background: #edf2ff; color: #2b5acc; }.badge.amber { background: #fff6e8; color: #98661b; }

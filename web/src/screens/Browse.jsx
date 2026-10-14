@@ -24,7 +24,7 @@ export default function Browse({ actor }) {
   if (kind === 'trips') columns.push({ key: 'riderName', label: 'Rider' }, { key: 'licensePlate', label: 'Vehicle' },
     { key: 'fareAmount', label: 'Fare', render: row => money(row.fareAmount) }, { key: 'status', label: 'Status', render: row => <Badge status={row.status} /> },
     { key: 'createdAt', label: 'Booked at', render: row => time(row.createdAt) })
-  columns.push({ key: 'details', label: 'Details', render: row => <button className="text-button" onClick={() => setDetail(row.id)} aria-label={'Open details for ' + (row.name || row.licensePlate || shortId(row.id))}>Open details ↗</button> })
+  columns.push({ key: 'details', label: 'Details', sticky: true, render: row => <button className="text-button" onClick={() => setDetail(row.id)} aria-label={'Open details for ' + (row.name || row.licensePlate || shortId(row.id))}>Open details ↗</button> })
   return <section className="card browse-card"><div className="tabs" role="group" aria-label="Browse entities">
     {['riders', 'vehicles', 'trips'].map(value => <button className={kind === value ? 'selected' : ''} aria-pressed={kind === value} key={value} onClick={() => reset(() => { setKind(value); setDetail(null) })}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
     <div className="filters">

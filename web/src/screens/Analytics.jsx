@@ -25,10 +25,10 @@ export default function Analytics() {
     <Dates value={dates} onChange={value => { setDates(value); setPage(1) }} /><button className="secondary" disabled={revenue.loading} onClick={revenue.reload}>Reload revenue</button></div>
     <p className="muted">Default: last 30 days. Choose up to 90 calendar days. Dates use Asia/Kolkata.</p></section>
     <section className="card"><h2>Seven-day revenue average</h2><Feedback query={revenue} hasRows={revenue.data?.series.length} empty="No active vehicle is available for a chart." />
-      {revenue.data?.selectedVehicleId && <p className="muted">Chart vehicle: <strong>{chartVehicle.data?.vehicle.licensePlate || shortId(revenue.data.selectedVehicleId)}</strong></p>}
+      {revenue.data?.selectedVehicleId && <p className="muted">Chart vehicle: <strong>{chartVehicle.data?.vehicle.licensePlate || shortId(revenue.data.selectedVehicleId)}</strong>{!vehicle && ' (the first active vehicle). Choose an analytics vehicle above to chart another one. The ranking below covers the whole fleet.'}</p>}
       {revenue.data?.series.length > 0 && <RevenueChart rows={revenue.data.series} />}
     </section><section className="card"><h2>Daily vehicle ranking</h2><p className="muted">Rank is based on the seven-day average across the whole fleet. Equal averages share a rank.</p>
-      <Feedback query={revenue} hasRows={revenue.data?.rankings.length} empty="No ranking rows match these dates." />
+      <Feedback query={revenue} hasRows={revenue.data?.rankings.length} empty="No ranking rows match these dates." quiet />
       {revenue.data?.rankings.length > 0 && <Table label="Daily revenue ranks" rows={revenue.data.rankings} columns={[{ key: 'date', label: 'Date' }, { key: 'licensePlate', label: 'Vehicle' }, { key: 'dailyRevenue', label: 'Daily revenue', render: row => money(row.dailyRevenue) }, { key: 'movingAverage7Days', label: '7-day average', render: row => money(row.movingAverage7Days) }, { key: 'rank', label: 'Rank' }]} />}
       {revenue.data && <Pager page={page} total={revenue.data.total} onPage={setPage} disabled={revenue.loading} />}
     </section><section className="card"><div className="section-title spread"><div><h2>Lifetime vehicle totals</h2><p className="muted">All dates · Last successful refresh: {time(summary.data?.lastRefreshedAt)}</p></div>

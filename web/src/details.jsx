@@ -9,8 +9,14 @@ function display(value) {
   if (value === false) return 'No'
   if (value === null || value === undefined) return 'Not recorded'
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value))) return time(value)
+  if (Array.isArray(value) && value.every(item => item === null || typeof item !== 'object')) return value.map(display).join(', ')
   if (typeof value === 'object') return JSON.stringify(value, null, 2)
   return String(value)
+}
+
+function newestFirst(records) {
+  const when = record => { const value = Date.parse(record?.date); return Number.isNaN(value) ? -Infinity : value }
+  return [...records].sort((a, b) => (when(a) === when(b) ? 0 : when(b) > when(a) ? 1 : -1))
 }
 
 export function Metadata({ data, error, retry }) {
@@ -20,7 +26,7 @@ export function Metadata({ data, error, retry }) {
   return <><h3>Vehicle features</h3>
     {features.length ? <div className="tags">{features.map(([key]) => <span key={key}>{label(key)}</span>)}</div> : <p className="muted">No features listed.</p>}
     <h3>Inspection records</h3>
-    {data.inspectionRecords?.length ? data.inspectionRecords.map((record, index) => <div className="inspection" key={index}>
+    {data.inspectionRecords?.length ? newestFirst(data.inspectionRecords).map((record, index) => <div className="inspection" key={index}>
       <strong>Inspection {index + 1}</strong>{record && typeof record === 'object' && !Array.isArray(record) ?
         <dl>{Object.entries(record).map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd className="wrap">{display(value)}</dd></div>)}</dl> : <p>{display(record)}</p>}
     </div>) : <p className="muted">No inspections recorded.</p>}

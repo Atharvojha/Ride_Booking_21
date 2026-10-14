@@ -44,6 +44,8 @@ async def invalid_input(request, exc):
     message = 'Check these inputs: ' + ', '.join(fields) + '.'
     if 'fareAmount' in fields:
         message = 'Enter a positive fare up to 99,999,999.99 with at most two decimal places.'
+        if any(item['loc'][-1] == 'fareAmount' and item['type'] == 'string_type' for item in exc.errors()):
+            message = 'Send the fare as text, for example "120.00". It must be positive, up to 99,999,999.99, with at most two decimal places.'
     return error_reply(422, 'INVALID_INPUT', message)
 
 

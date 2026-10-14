@@ -17,6 +17,7 @@ export default function Booking({ actor, onBusy }) {
   const wallet = useQuery(actor ? '/api/riders/' + actor.id : null)
   const amount = fareInPaise(fare)
   const balance = wallet.data?.rider.walletBalance
+  const insufficient = !success && amount !== null && balance !== undefined && !wallet.error && amount > Math.round(Number(balance) * 100)
   useEffect(() => { onBusy(pending || Boolean(unknown)); return () => onBusy(false) }, [pending, unknown, onBusy])
   useEffect(() => {
     if (!unknown) return
@@ -59,7 +60,8 @@ export default function Booking({ actor, onBusy }) {
         <div className="button-row"><button onClick={book} disabled={pending}>{pending ? 'Booking…' : 'Confirm booking'}</button><button className="secondary" disabled={pending} onClick={() => setReview(false)}>Edit details</button></div></div>)}
   </section><section className="card"><h2>Wallet preview</h2><Stat label="Current balance" value={wallet.error ? 'Unavailable' : money(balance)} />
     <Stat label="Demo fare" value={amount === null ? '—' : money(fixedFare(fare))} />
-    <Stat label={success ? "Saved balance after booking" : "Projected balance"} value={success ? money(success.balanceAfter) : amount !== null && balance !== undefined && !wallet.error ? money(((Math.round(Number(balance) * 100) - amount) / 100).toFixed(2)) : '—'} note="The saved booking result below gives the actual balances." />
+    <Stat label={success ? "Saved balance after booking" : "Projected balance"} value={success ? money(success.balanceAfter) : amount !== null && balance !== undefined && !wallet.error ? money(((Math.round(Number(balance) * 100) - amount) / 100).toFixed(2)) : '—'} note={success ? 'These are the saved balances from your booking.' : 'An estimate. The saved balances appear after you confirm.'} />
+    {insufficient && <p className="muted">The fare is more than this rider's wallet balance, so the booking will be refused.</p>}
     <p className="muted">A rider can have one requested or in-transit trip at a time.</p></section></div>
     {success && <section className="card success-card"><h2>Trip booked</h2><Notice kind="success">Your trip was saved. The wallet change and audit entry below came from this booking.</Notice>
       <dl className="record"><div><dt>Trip ID</dt><dd className="id wrap">{success.trip.id}</dd></div><div><dt>Status</dt><dd><Badge status={success.trip.status} /></dd></div><div><dt>Balance before</dt><dd>{money(success.balanceBefore)}</dd></div><div><dt>Balance after</dt><dd>{money(success.balanceAfter)}</dd></div>
