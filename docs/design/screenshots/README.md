@@ -10,4 +10,4 @@ These captures were made by the browser tests against temporary fixture data on 
 - [Reviews and vehicle metadata](reviews-desktop.png)
 - [Phone wallet layout](wallet-phone.png)
 
-The wireframes remain in the parent folder. Full-size checks were run later (see ../../scale_verification.md). The recorded live demo is still pending.
+The wireframes remain in the parent folder. Full-size checks were run later (see ../../scale_verification.md). A 1-minute demo video is in ../../demo/demo.mp4.
