@@ -186,14 +186,16 @@ performance/              original Assignment 1 performance output
 
 ## Contribution table
 
-The course expects every member to contribute to both design and code. The table below is **TO BE FILLED** with each member's name, GitHub username and real work before submission.
+The course expects every member to contribute to both design and code. Atharv's and Disha's rows below are what the repository and the team can show. The two rows marked **TO BE CONFIRMED** are filled in by those members themselves.
+
+All commits and pull requests were made from Atharv's laptop while the team worked together, so GitHub shows one committer. The table records who did what, not who typed the commits.
 
 | Member | GitHub | Design work | Code work |
 |---|---|---|---|
-| Atharv Ojha | Atharvojha | TO BE FILLED | TO BE FILLED |
-| TO BE FILLED | TO BE FILLED | TO BE FILLED | TO BE FILLED |
-| TO BE FILLED | TO BE FILLED | TO BE FILLED | TO BE FILLED |
-| TO BE FILLED | TO BE FILLED | TO BE FILLED | TO BE FILLED |
+| Atharv Ojha | Atharvojha | Users and wireframes in `docs/design/`, the screen layouts, colours and shared components | Fixes to the inherited SQL, MongoDB and seeder scripts; the FastAPI server; the six React screens; the API, unit and browser tests; the full-size verification; the handover note and this README |
+| Disha Sharma | dishasharma2003 | The Figma prototype that the six screens follow | **TO BE CONFIRMED** |
+| Vignesh | Vigneshxo9 | **TO BE CONFIRMED** | **TO BE CONFIRMED** |
+| Kyatheshwar | kyatheshwar | **TO BE CONFIRMED** | **TO BE CONFIRMED** |
 
 ---
 
