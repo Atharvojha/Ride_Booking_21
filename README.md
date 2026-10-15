@@ -186,16 +186,16 @@ performance/              original Assignment 1 performance output
 
 ## Contribution table
 
-The course expects every member to contribute to both design and code. Atharv's and Disha's rows below are what the repository and the team can show. Cells marked **TO BE CONFIRMED** are filled in by those members themselves.
+The course expects every member to contribute to both design and code. Each member confirmed their own row.
 
 All commits and pull requests were made from Atharv's laptop while the team worked together, so GitHub shows one committer. The table records who did what, not who typed the commits.
 
 | Member | GitHub | Design work | Code work |
 |---|---|---|---|
 | Atharv Ojha | Atharvojha | Users and wireframes in `docs/design/`, the screen layouts, colours and shared components | Fixes to the inherited SQL, MongoDB and seeder scripts; the FastAPI server; the six React screens; the API, unit and browser tests; the full-size verification; the handover note and this README |
-| Disha Sharma | dishasharma2003 | The Figma prototype that the six screens follow | **TO BE CONFIRMED** |
-| Vignesh | Vigneshxo9 | **TO BE CONFIRMED** | The PostgreSQL window-function analytics: the seven-day moving average and `DENSE_RANK` ranking (`sql/06_window_analytics.sql`, `sql/08_api_revenue.sql`) behind the Vehicle Analytics screen |
-| Kyatheshwar | kyatheshwar | **TO BE CONFIRMED** | The MongoDB workflows: nearby vehicles with `$geoNear` and the `$facet` review summary with vehicle metadata (`mongo/`), behind the Nearby Vehicles and Trip Reviews screens |
+| Disha Sharma | dishasharma2003 | The Figma prototype that the six screens follow | Tested the six screens in the browser on seeded data and reported differences from the Figma |
+| Vignesh | Vigneshxo9 | Checked the Vehicle Analytics screen against the Figma design and the window-function results | The PostgreSQL window-function analytics: the seven-day moving average and `DENSE_RANK` ranking (`sql/06_window_analytics.sql`, `sql/08_api_revenue.sql`) behind the Vehicle Analytics screen |
+| Kyatheshwar | kyatheshwar | Checked the Nearby Vehicles and Trip Reviews screens against the Figma design and the MongoDB results | The MongoDB workflows: nearby vehicles with `$geoNear` and the `$facet` review summary with vehicle metadata (`mongo/`), behind the Nearby Vehicles and Trip Reviews screens |
 
 ---
 
