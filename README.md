@@ -7,7 +7,7 @@ RideSync is a ride-booking application. This is **Project P2**. It puts a web fr
 | Team | 10 |
 | Team repository | https://github.com/Atharvojha/Ride_Booking_21 |
 | Inherited repository | https://github.com/amaan070/Ride_Booking_21 (starting commit `d0d5ad44ba4ab2f566cd965e055870ddd7e95697`, all 23 original commits kept) |
-| Final commit hash | `bda7d0f505d91834a86cfbd6823fbc2e20c9057c` (the last commit before this line was added; a file cannot contain the hash of its own commit) |
+| Final commit hash | `865a7ffb937a051353c30a65131dbfbf3543adcc` (the last commit before this line was added; a file cannot contain the hash of its own commit) |
 | Demo video (5 minutes at most) | [docs/demo/demo.mp4](docs/demo/demo.mp4) (1 minute, 12 MB; GitHub plays it in the browser) |
 
 ## Contents
