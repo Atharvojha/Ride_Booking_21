@@ -186,7 +186,7 @@ performance/              original Assignment 1 performance output
 
 ## Contribution table
 
-The course expects every member to contribute to both design and code. Atharv's and Disha's rows below are what the repository and the team can show. The two rows marked **TO BE CONFIRMED** are filled in by those members themselves.
+The course expects every member to contribute to both design and code. Atharv's and Disha's rows below are what the repository and the team can show. Cells marked **TO BE CONFIRMED** are filled in by those members themselves.
 
 All commits and pull requests were made from Atharv's laptop while the team worked together, so GitHub shows one committer. The table records who did what, not who typed the commits.
 
@@ -194,8 +194,8 @@ All commits and pull requests were made from Atharv's laptop while the team work
 |---|---|---|---|
 | Atharv Ojha | Atharvojha | Users and wireframes in `docs/design/`, the screen layouts, colours and shared components | Fixes to the inherited SQL, MongoDB and seeder scripts; the FastAPI server; the six React screens; the API, unit and browser tests; the full-size verification; the handover note and this README |
 | Disha Sharma | dishasharma2003 | The Figma prototype that the six screens follow | **TO BE CONFIRMED** |
-| Vignesh | Vigneshxo9 | **TO BE CONFIRMED** | **TO BE CONFIRMED** |
-| Kyatheshwar | kyatheshwar | **TO BE CONFIRMED** | **TO BE CONFIRMED** |
+| Vignesh | Vigneshxo9 | **TO BE CONFIRMED** | The PostgreSQL window-function analytics: the seven-day moving average and `DENSE_RANK` ranking (`sql/06_window_analytics.sql`, `sql/08_api_revenue.sql`) behind the Vehicle Analytics screen |
+| Kyatheshwar | kyatheshwar | **TO BE CONFIRMED** | The MongoDB workflows: nearby vehicles with `$geoNear` and the `$facet` review summary with vehicle metadata (`mongo/`), behind the Nearby Vehicles and Trip Reviews screens |
 
 ---
 
