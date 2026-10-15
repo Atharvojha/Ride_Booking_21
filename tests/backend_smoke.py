@@ -136,7 +136,11 @@ record('Telemetry TTL 7200 seconds', any(i.get('expireAfterSeconds') == 7200 for
 mdb.TelemetryPings.insert_one({'vehicle_id':vehicle,'is_available':True,'location':{'type':'Point','coordinates':[78.4867,17.3850]},'created_at':datetime.datetime.now(datetime.timezone.utc)})
 near = list(mdb.TelemetryPings.aggregate([{'$geoNear':{'near':{'type':'Point','coordinates':[78.4867,17.3850]},'key':'location','distanceField':'distance_meters','maxDistance':5000,'spherical':True,'query':{'is_available':True}}},{'$limit':1}]))
 record('Database geoNear at Hyderabad origin', len(near) == 1 and near[0]['distance_meters'] < 1)
-summary = {'source_commit_before_verification': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(), 'database':NAME,'scale':'small sample dataset; large dataset tests are still pending','results':results}
+try:
+    source_commit = subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True,stderr=subprocess.DEVNULL).strip()
+except (subprocess.CalledProcessError, FileNotFoundError):
+    source_commit = 'unknown (this is not a Git checkout, for example an unzipped submission)'
+summary = {'source_commit_before_verification': source_commit, 'database':NAME,'scale':'small sample dataset (full-size checks are in tests/scale_check.py)','results':results}
 if os.getenv('VERIFICATION_REPORT'):
     Path(os.environ['VERIFICATION_REPORT']).write_text(json.dumps(summary,indent=2))
 print(json.dumps({'passed':sum(r['passed'] for r in results),'failed':sum(not r['passed'] for r in results)}))
