@@ -44,10 +44,10 @@ These were taken by the browser tests, using small temporary test records (not r
 
 | | |
 |---|---|
-| ![Browse](docs/design/screenshots/browse-desktop.png) Browse | ![Booking](docs/design/screenshots/booking-desktop.png) Booking with audit entry |
-| ![Wallet](docs/design/screenshots/wallet-desktop.png) Wallet audit | ![Analytics](docs/design/screenshots/analytics-desktop.png) Analytics |
-| ![Nearby](docs/design/screenshots/nearby-desktop.png) Nearby vehicles | ![Reviews](docs/design/screenshots/reviews-desktop.png) Reviews and metadata |
-| <img src="docs/design/screenshots/wallet-phone.png" width="240" alt="Phone wallet layout"><br>Phone layout (wallet audit) | |
+| ![Home](docs/design/screenshots/home-desktop.png) Home and sign-in (rider or admin) | ![Browse](docs/design/screenshots/browse-desktop.png) Browse (admin) |
+| ![Booking](docs/design/screenshots/booking-desktop.png) Booking with audit entry (rider) | ![Wallet](docs/design/screenshots/wallet-desktop.png) My wallet (rider) |
+| ![Analytics](docs/design/screenshots/analytics-desktop.png) Analytics (admin) | ![Nearby](docs/design/screenshots/nearby-desktop.png) Nearby vehicles |
+| ![Reviews](docs/design/screenshots/reviews-desktop.png) Reviews and metadata | <img src="docs/design/screenshots/wallet-phone.png" width="240" alt="Phone wallet audit layout"><br>Phone layout (admin wallet audit) |
 
 ## Setup
 

@@ -4,6 +4,8 @@ const screenshots = process.env.RIDESYNC_SCREENSHOTS || '../docs/design/screensh
 async function capture(page, name) {
   await page.locator('h1').focus()
   await page.evaluate(() => window.scrollTo(0, 0))
+  // Let balance flips, dialogs and the phone menu finish animating before the picture.
+  await page.waitForTimeout(1500)
   await page.screenshot({ path: screenshots + '/' + name, fullPage: true })
 }
 
@@ -214,6 +216,7 @@ test('admin phone view inspects a rider and scrolls wide tables', async ({ page 
   await navigate(page, 'Wallet Audit')
   await expect(page.getByRole('table', { name: 'Wallet audit trail' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await capture(page, 'wallet-phone.png')
   await page.getByRole('button', { name: 'Open navigation' }).click()
   await navigate(page, 'Browse Data')
   const table = page.getByRole('region', { name: 'Browse riders' })
@@ -223,6 +226,7 @@ test('admin phone view inspects a rider and scrolls wide tables', async ({ page 
 test('rider and admin get separate views, and the API enforces the split', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1, name: /Every ride, perfectly in sync/ })).toBeVisible()
+  await capture(page, 'home-desktop.png')
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toHaveCount(0)
   for (const section of ['How it works', 'Rider & admin', 'Fleet']) await expect(page.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: section })).toBeVisible()
   await page.getByRole('tab', { name: 'Admin' }).click()
