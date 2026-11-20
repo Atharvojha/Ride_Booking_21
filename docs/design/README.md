@@ -6,6 +6,8 @@ Team 10, Assignment 2. These wireframes guided the six working screens in web/. 
 
 We reviewed the six required screens in the [Figma prototype](https://www.figma.com/make/wwotVWxHR3U34BWh4h4qeo/Complete-RideSync-UI-UX-Design) in Chrome on 11 October 2026. Its values and booking outcomes are sample data. Its build claims do not describe this repository.
 
+Newer wireframes for the rider view, the admin view and the sign-in homepage, at laptop and mobile width, are in [wireframes-v2](wireframes-v2/README.md). The six wireframes below describe the first version, before roles were added.
+
 [Open the six wireframes](wireframes.html) in a browser. These are simple drawings of the planned screens, with placeholder values. They are saved here so the submission does not depend on access to Figma. The layout follows the prototype, with fields adjusted to the inherited database.
 
 ## Main users
