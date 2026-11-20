@@ -8,7 +8,7 @@ npm ci
 npm run dev
 ~~~
 
-Open http://127.0.0.1:5173. The app uses the real API through Vite's local proxy. There is no login; the header switches demo riders. The first rider is selected automatically. Lists fetch 25 rows per page; rider and vehicle selectors fetch 10 choices per page. Filters and details also come from the API.
+Open http://127.0.0.1:5173. The app uses the real API through Vite's local proxy. A sign-in screen offers two views. Riders choose their name (demo sign-in) and see Book a Trip, My Wallet, their own trips and vehicles, Nearby Vehicles and Trip Reviews. The admin signs in with ADMIN_USERNAME and ADMIN_PASSWORD from .env and sees Browse Data, Vehicle Analytics (with the refresh button), Wallet Audit for any rider chosen in the header, Nearby Vehicles and Trip Reviews. The API enforces the same split. Lists fetch 25 rows per page; rider and vehicle selectors fetch 10 choices per page. Filters and details also come from the API.
 
 React shares the forms, tables and dialogs. Vite runs the local app and build. Plain CSS follows the navy/blue Figma layout and stacks cards on phones. Native SVG/CSS charts draw the returned revenue, rating and tag values. Leaflet shows nearby coordinates; OpenStreetMap tiles need internet access and retain attribution. A failed basemap does not hide the result list. See the tile policy link in docs/design/README.md.
 

@@ -1,15 +1,16 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.auth import check_rider, require_session
 from api.browse import read_trip
 from api.common import (ApiError, Booking, DateInput, FromDate, Page, PageSize,
                         StatusChange, add_dates, audit, date_bounds, listing,
                         money, required, trip)
 from api.database import one, postgres
 
-router = APIRouter(prefix='/api')
+router = APIRouter(prefix='/api', dependencies=[Depends(require_session)])
 BOOKING_ERRORS = {
     'INVALID_INPUT': (422, 'Enter a positive fare with at most two decimal places.'),
     'NOT_FOUND': (404, 'This rider or vehicle could not be found.'),
@@ -20,7 +21,8 @@ BOOKING_ERRORS = {
 
 
 @router.post('/trips', status_code=201)
-def book_trip(booking: Booking):
+def book_trip(booking: Booking, session: dict = Depends(require_session)):
+    check_rider(session, booking.riderId)
     with postgres(write=True) as conn:
         result = one(conn, 'CALL sp_book_trip(%s,%s,%s,NULL,NULL,NULL)',
                      [booking.riderId, booking.vehicleId, Decimal(booking.fareAmount)])
@@ -37,9 +39,10 @@ def book_trip(booking: Booking):
 
 
 @router.patch('/trips/{trip_id}/status')
-def change_status(trip_id: UUID, change: StatusChange):
+def change_status(trip_id: UUID, change: StatusChange, session: dict = Depends(require_session)):
     with postgres(write=True) as conn:
         current = read_trip(conn, trip_id)
+        check_rider(session, current['rider_id'])
         if change.status == 'IN TRANSIT':
             changed = one(conn, "UPDATE trips SET status='IN TRANSIT' WHERE id=%s AND status='REQUESTED' RETURNING id",
                           [trip_id])
@@ -64,7 +67,8 @@ def change_status(trip_id: UUID, change: StatusChange):
 
 @router.get('/riders/{rider_id}/audit')
 def wallet_audit(rider_id: UUID, from_date: FromDate = None, to: DateInput = None,
-                 page: Page = 1, pageSize: PageSize = 25):
+                 page: Page = 1, pageSize: PageSize = 25, session: dict = Depends(require_session)):
+    check_rider(session, rider_id)
     lower, upper = date_bounds(from_date, to)
     conditions, values = ['rider_id=%s'], [rider_id]
     add_dates(conditions, values, 'timestamp', lower, upper)

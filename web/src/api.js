@@ -26,6 +26,7 @@ export async function request(url, { signal, method = 'GET', body } = {}) {
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined })
     const data = await response.json()
+    if (response.status === 401 && data.error?.code === 'SESSION_REQUIRED') window.dispatchEvent(new Event('ridesync:signed-out'))
     if (!response.ok) throw new ApiError(data.error?.message || 'The request failed.',
       data.error?.code || 'SERVER_ERROR', write && response.status >= 500)
     return data

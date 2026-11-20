@@ -37,7 +37,8 @@ def run():
         with admin.cursor() as cur:
             cur.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
         created = True
-        os.environ.update(PGDATABASE=name, MONGO_DB=name, PGUSER=pg['user'])
+        os.environ.update(PGDATABASE=name, MONGO_DB=name, PGUSER=pg['user'],
+                          ADMIN_USERNAME='admin', ADMIN_PASSWORD='browser-test-admin')
         conn = psycopg2.connect(dbname=name, **pg)
         conn.autocommit = True
         with conn.cursor() as cur:

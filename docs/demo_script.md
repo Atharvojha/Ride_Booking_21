@@ -58,7 +58,7 @@ These come from the demo database on 11 October 2026. Check them again before re
 
 | Time | Screen | Do | Say |
 | --- | --- | --- | --- |
-| 0:00 | Header | Show the sidebar and the demo rider selector | "RideSync has six screens. The browser shows what the database returns. The header lets us pick a demo rider; there is no real login." |
+| 0:00 | Header | Show the sidebar and the demo rider selector | "RideSync has two views. Riders pick their name and see only their own wallet and trips; the admin signs in with a password and sees the whole fleet. The header shows who is signed in." |
 | 0:15 | Browse Data | Riders tab: search "Pant". Vehicles tab: filter by class and active. Trips tab: filter by status. Use Next/Previous. Open one trip's details. | "Searching, filtering and paging all happen in the database. Pages are at most 100 rows." |
 | 0:50 | Book a Trip | Select Thomas Pant. Choose an active vehicle. Enter fare `150.00`. Click Review booking, then Confirm booking. | "Fares are exact decimals. The `sp_book_trip` procedure does the booking inside one transaction." |
 | 1:15 | Booking result | Point at the balance before and after and the audit entry | "The audit row is the exact one made by the database trigger: ESCROW_HOLD, minus 150." |

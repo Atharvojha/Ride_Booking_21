@@ -2,12 +2,13 @@ from datetime import date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.auth import require_admin
 from api.common import ApiError, DateInput, FromDate, Page, PageSize, listing, money, required, utc_time
 from api.database import many, one, postgres
 
-router = APIRouter(prefix='/api/analytics')
+router = APIRouter(prefix='/api/analytics', dependencies=[Depends(require_admin)])
 
 
 def chart_dates(start, end):

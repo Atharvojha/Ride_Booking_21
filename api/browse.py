@@ -2,14 +2,15 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pymongo.errors import PyMongoError
 
+from api.auth import check_rider, require_admin, require_session, scope_rider
 from api.common import (DateInput, FromDate, Page, PageSize, Search, TripStatus, add_dates,
                         date_bounds, listing, required, rider, trip, utc_time, vehicle)
 from api.database import mongo, one, postgres
 
-router = APIRouter(prefix='/api')
+router = APIRouter(prefix='/api', dependencies=[Depends(require_session)])
 TRIPS = 'trips t JOIN riders r ON r.id=t.rider_id JOIN vehicles v ON v.id=t.vehicle_id'
 TRIP_FIELDS = 't.*, r.name AS rider_name, v.license_plate'
 
@@ -24,7 +25,7 @@ def metadata_value(value):
     return value
 
 
-@router.get('/riders')
+@router.get('/riders', dependencies=[Depends(require_admin)])
 def riders(search: Search = '', page: Page = 1, pageSize: PageSize = 25):
     with postgres() as conn:
         return listing(conn, 'riders', '*', ['(name ILIKE %s OR id::text ILIKE %s)'],
@@ -32,7 +33,8 @@ def riders(search: Search = '', page: Page = 1, pageSize: PageSize = 25):
 
 
 @router.get('/riders/{rider_id}')
-def rider_detail(rider_id: UUID):
+def rider_detail(rider_id: UUID, session: dict = Depends(require_session)):
+    check_rider(session, rider_id)
     with postgres() as conn:
         return {'rider': rider(required(one(conn, 'SELECT * FROM riders WHERE id=%s', [rider_id])))}
 
@@ -74,7 +76,9 @@ def vehicle_detail(vehicle_id: UUID):
 @router.get('/trips')
 def trips(riderId: UUID | None = None, vehicleId: UUID | None = None,
           status: TripStatus | None = None, from_date: FromDate = None,
-          to: DateInput = None, page: Page = 1, pageSize: PageSize = 25):
+          to: DateInput = None, page: Page = 1, pageSize: PageSize = 25,
+          session: dict = Depends(require_session)):
+    riderId = scope_rider(session, riderId)
     lower, upper = date_bounds(from_date, to)
     conditions, values = [], []
     for column, value in [('t.rider_id', riderId), ('t.vehicle_id', vehicleId), ('t.status', status)]:
@@ -92,6 +96,8 @@ def read_trip(conn, trip_id):
 
 
 @router.get('/trips/{trip_id}')
-def trip_detail(trip_id: UUID):
+def trip_detail(trip_id: UUID, session: dict = Depends(require_session)):
     with postgres() as conn:
-        return {'trip': trip(read_trip(conn, trip_id))}
+        row = read_trip(conn, trip_id)
+    check_rider(session, row['rider_id'])
+    return {'trip': trip(row)}

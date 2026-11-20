@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pymongo.errors import PyMongoError
 
 from api.analytics import router as analytics_router
+from api.auth import router as session_router
 from api.nearby import router as nearby_router
 from api.reviews import router as review_router
 from api.browse import router as browse_router
@@ -21,7 +22,8 @@ app = FastAPI(title='RideSync Team 10 API', version='0.2.0',
               description='Assignment demo: browsing, booking, wallet history, revenue, nearby vehicles and reviews.')
 app.add_middleware(CORSMiddleware,
                    allow_origins=os.getenv('WEB_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(','),
-                   allow_methods=['GET', 'POST', 'PATCH'], allow_headers=['Content-Type'])
+                   allow_methods=['GET', 'POST', 'PATCH'], allow_headers=['Content-Type'], allow_credentials=True)
+app.include_router(session_router)
 app.include_router(nearby_router)
 app.include_router(analytics_router)
 app.include_router(review_router)

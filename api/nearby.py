@@ -3,12 +3,14 @@ from itertools import islice
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+
+from api.auth import require_session
 
 from api.common import utc_time
 from api.database import many, mongo, postgres
 
-router = APIRouter(prefix='/api/vehicles')
+router = APIRouter(prefix='/api/vehicles', dependencies=[Depends(require_session)])
 Longitude = Annotated[float, Query(ge=-180, le=180, allow_inf_nan=False)]
 Latitude = Annotated[float, Query(ge=-90, le=90, allow_inf_nan=False)]
 ResultLimit = Annotated[int, Query(ge=1, le=50)]

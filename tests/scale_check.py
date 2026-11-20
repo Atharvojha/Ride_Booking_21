@@ -71,6 +71,10 @@ class Api:
 
     def __init__(self, base):
         self.client = httpx.Client(base_url=base, timeout=60)
+        # The API needs a session; the scale checks read every rider, so sign in as the admin from .env.
+        login = self.client.post('/api/session/admin', json={'username': os.getenv('ADMIN_USERNAME', 'admin'),
+                                                             'password': os.getenv('ADMIN_PASSWORD', '')})
+        login.raise_for_status()
 
     def get(self, path, **params):
         started = time.perf_counter()
