@@ -44,10 +44,10 @@ These were taken by the browser tests, using small temporary test records (not r
 
 | | |
 |---|---|
-| ![Home](docs/design/screenshots/home-desktop.png) Home and sign-in (rider or admin) | ![Browse](docs/design/screenshots/browse-desktop.png) Browse (admin) |
-| ![Booking](docs/design/screenshots/booking-desktop.png) Booking with audit entry (rider) | ![Wallet](docs/design/screenshots/wallet-desktop.png) My wallet (rider) |
-| ![Analytics](docs/design/screenshots/analytics-desktop.png) Analytics (admin) | ![Nearby](docs/design/screenshots/nearby-desktop.png) Nearby vehicles |
-| ![Reviews](docs/design/screenshots/reviews-desktop.png) Reviews and metadata | <img src="docs/design/screenshots/wallet-phone.png" width="240" alt="Phone wallet audit layout"><br>Phone layout (admin wallet audit) |
+| ![Home](docs/design/screenshots/home-desktop.png) Home and sign-in (rider or admin) | ![Browse](docs/design/screenshots/browse-admin-desktop.png) Browse (admin) |
+| ![Booking](docs/design/screenshots/booking-rider-desktop.png) Booking with audit entry (rider) | ![Wallet](docs/design/screenshots/wallet-rider-desktop.png) My wallet (rider) |
+| ![Analytics](docs/design/screenshots/analytics-admin-desktop.png) Analytics (admin) | ![Nearby](docs/design/screenshots/nearby-shared-desktop.png) Nearby vehicles |
+| ![Reviews](docs/design/screenshots/reviews-shared-desktop.png) Reviews and metadata | <img src="docs/design/screenshots/wallet-admin-phone.png" width="240" alt="Phone wallet audit layout"><br>Phone layout (admin wallet audit) |
 
 ## Setup
 
