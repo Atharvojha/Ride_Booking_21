@@ -58,9 +58,32 @@ def database():
 
 
 @pytest.fixture
-def browser(database):
+def admin_env(monkeypatch):
+    monkeypatch.setenv('ADMIN_USERNAME', 'admin')
+    monkeypatch.setenv('ADMIN_PASSWORD', 'test-admin-password')
+    monkeypatch.setenv('ADMIN_SESSION_SECRET', 'test-secret')
+    monkeypatch.delenv('RIDER_DEMO_LOGIN', raising=False)
+
+
+@pytest.fixture
+def anonymous(database, admin_env):
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client
+
+
+@pytest.fixture
+def browser(anonymous):
+    """An admin session: it may use every endpoint, so the older tests read as before."""
+    response = anonymous.post('/api/session/admin', json={'username': 'admin', 'password': 'test-admin-password'})
+    assert response.status_code == 200
+    return anonymous
+
+
+def rider_client(rider_id):
+    client = TestClient(app, raise_server_exceptions=False)
+    client.__enter__()
+    assert client.post('/api/session/rider', json={'riderId': rider_id}).status_code == 200
+    return client
 
 
 @pytest.fixture
@@ -457,6 +480,105 @@ def test_refresh_lock_and_failed_refresh_keep_stamp(browser, database):
             cur.execute('CREATE UNIQUE INDEX idx_mv_vehicle_lifetime_stats_vehicle_id ON mv_vehicle_lifetime_stats(vehicle_id)')
         cur.execute((ROOT / 'sql/07_api_refresh_state.sql').read_text())
     assert browser.get('/api/analytics/summary').json()['lastRefreshedAt'] == before
+
+
+def test_everything_but_health_needs_a_session(anonymous, records):
+    rider, vehicle, _ = records
+    assert anonymous.get('/api/health').status_code == 200
+    assert anonymous.get('/api/session').json() == {'role': None, 'id': None, 'name': None}
+    for method, path in [('get', '/api/riders'), ('get', '/api/vehicles'), ('get', '/api/trips'),
+                         ('get', '/api/riders/' + rider), ('get', '/api/riders/' + rider + '/audit'),
+                         ('get', '/api/vehicles/nearby'), ('get', '/api/reviews'),
+                         ('get', '/api/analytics/summary'), ('post', '/api/analytics/refresh'),
+                         ('post', '/api/trips')]:
+        response = getattr(anonymous, method)(path)
+        assert response.status_code == 401 and response.json()['error']['code'] == 'SESSION_REQUIRED', path
+
+
+def test_admin_login_checks_credentials(anonymous):
+    for body in ({'username': 'admin', 'password': 'wrong'}, {'username': 'other', 'password': 'test-admin-password'}):
+        bad = anonymous.post('/api/session/admin', json=body)
+        assert bad.status_code == 401 and bad.json()['error']['code'] == 'INVALID_CREDENTIALS'
+    assert 'ridesync_session' not in anonymous.cookies
+    ok = anonymous.post('/api/session/admin', json={'username': 'admin', 'password': 'test-admin-password'})
+    assert ok.status_code == 200 and ok.json()['role'] == 'admin'
+    flags = ok.headers['set-cookie'].lower()
+    assert 'httponly' in flags and 'samesite=strict' in flags
+    assert anonymous.get('/api/session').json()['role'] == 'admin'
+    assert anonymous.post('/api/session/logout').json()['role'] is None
+    assert anonymous.get('/api/session').json()['role'] is None
+    assert anonymous.get('/api/riders').status_code == 401
+
+
+def test_rider_sees_and_changes_only_their_own_records(anonymous, browser, records, database):
+    rider, vehicle, _ = records
+    other = str(uuid4())
+    with database[0].cursor() as cur:
+        cur.execute('INSERT INTO riders(id,name,wallet_balance) VALUES(%s,%s,500)', [other, 'Other ' + other])
+    booked = book(browser, records)  # admin may book for any rider
+    assert booked.status_code == 201
+    trip_id = booked.json()['trip']['id']
+    me = rider_client(rider)
+    try:
+        assert me.get('/api/session').json() == {'role': 'rider', 'id': rider, 'name': 'Test ' + rider}
+        assert me.get('/api/riders/' + rider).status_code == 200
+        assert me.get('/api/riders/' + rider + '/audit').status_code == 200
+        assert me.get('/api/trips/' + trip_id).status_code == 200
+        assert me.get('/api/vehicles').status_code == 200 and me.get('/api/reviews').status_code == 200
+        # A rider's trip list is always their own, even when no rider is asked for.
+        listed = me.get('/api/trips').json()
+        assert listed['total'] >= 1 and {item['riderId'] for item in listed['items']} == {rider}
+        for path in ('/api/riders', '/api/analytics/summary', '/api/analytics/revenue'):
+            denied = me.get(path)
+            assert denied.status_code == 403 and denied.json()['error']['code'] in ('ADMIN_REQUIRED',), path
+        assert me.post('/api/analytics/refresh').status_code == 403
+        for path in ('/api/riders/' + other, '/api/riders/' + other + '/audit', '/api/trips?riderId=' + other):
+            assert me.get(path).status_code == 403, path
+        assert me.post('/api/trips', json={'riderId': other, 'vehicleId': vehicle, 'fareAmount': '10.00'}).status_code == 403
+        # Another rider's trip cannot be read or moved on.
+        stranger = rider_client(other)
+        try:
+            assert stranger.get('/api/trips/' + trip_id).status_code == 403
+            assert stranger.patch('/api/trips/' + trip_id + '/status', json={'status': 'IN TRANSIT'}).status_code == 403
+        finally:
+            stranger.__exit__(None, None, None)
+        assert me.patch('/api/trips/' + trip_id + '/status', json={'status': 'IN TRANSIT'}).status_code == 200
+    finally:
+        me.__exit__(None, None, None)
+
+
+def test_rider_demo_sign_in_lists_names_only_and_can_be_switched_off(anonymous, records, monkeypatch):
+    rider = records[0]
+    listing = anonymous.get('/api/session/riders', params={'search': rider}).json()
+    assert listing['items'] == [{'id': rider, 'name': 'Test ' + rider}]
+    assert anonymous.post('/api/session/rider', json={'riderId': str(uuid4())}).status_code == 404
+    monkeypatch.setenv('RIDER_DEMO_LOGIN', '0')
+    assert anonymous.get('/api/session/riders').status_code == 403
+    assert anonymous.post('/api/session/rider', json={'riderId': rider}).json()['error']['code'] == 'RIDER_LOGIN_DISABLED'
+
+
+def test_sessions_reject_tampering_expiry_and_a_removed_admin_password(anonymous, monkeypatch):
+    from api.auth import COOKIE, make_token
+    for token in (make_token('admin', 'admin', 'admin') + '0', make_token('admin', 'admin', 'admin', now=0)):
+        anonymous.cookies.clear()
+        anonymous.cookies.set(COOKIE, token, path='/api')
+        assert anonymous.get('/api/session').json()['role'] is None
+    anonymous.cookies.clear()
+    anonymous.cookies.set(COOKIE, make_token('admin', 'admin', 'admin'), path='/api')
+    assert anonymous.get('/api/session').json()['role'] == 'admin'
+    monkeypatch.delenv('ADMIN_PASSWORD')
+    assert anonymous.get('/api/session').json()['role'] is None
+    response = anonymous.post('/api/session/admin', json={'username': 'admin', 'password': ''})
+    assert response.status_code == 503 and response.json()['error']['code'] == 'ADMIN_DISABLED'
+
+
+def test_admin_login_is_throttled_after_repeated_failures(anonymous):
+    from api.auth import _failures
+    _failures.clear()
+    bad = {'username': 'admin', 'password': 'nope'}
+    assert [anonymous.post('/api/session/admin', json=bad).status_code for _ in range(5)] == [401] * 5
+    assert anonymous.post('/api/session/admin', json={'username': 'admin', 'password': 'test-admin-password'}).status_code == 429
+    _failures.clear()
 
 
 def test_nearby_uses_latest_ping_before_filters_and_limit(browser, records, database):

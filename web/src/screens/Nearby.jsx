@@ -62,7 +62,7 @@ function VehicleMap({ origin, items, selected, hovered, onSelect, onHover, onOri
   useEffect(() => {
     layers.current.clearLayers()
     const point = [origin.latitude, origin.longitude]
-    L.circle(point, { radius: 5000, color: 'rgba(255,255,255,.4)', weight: 1, fillColor: '#7CFFB2', fillOpacity: 0.04, interactive: false }).addTo(layers.current)
+    L.circle(point, { radius: 5000, color: 'rgba(42,39,34,.5)', weight: 1, fillColor: '#1F8A5B', fillOpacity: 0.04, interactive: false }).addTo(layers.current)
     const pin = L.marker(point, { draggable: true, autoPan: true, keyboard: false, zIndexOffset: 2000,
       icon: L.divIcon({ className: '', html: '<div class="origin-pin"><span></span></div>', iconSize: [28, 36], iconAnchor: [14, 34] }) })
       .addTo(layers.current).bindTooltip('Drag me, or tap the map', { direction: 'top', offset: [0, -30] })

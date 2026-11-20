@@ -2,7 +2,7 @@
 
 All routes below are implemented and tested. The six screens in web/ now use these routes. See [setup instructions](../api/README.md).
 
-The browser talks only to the API. The API calls PostgreSQL procedures/views and MongoDB aggregations. Demo rider switching is sufficient; real login is outside the required scope. Validate IDs, coordinates, fares, filters and status transitions on the server.
+The browser talks only to the API. The API calls PostgreSQL procedures/views and MongoDB aggregations. Sign-in has two roles, admin and rider (see Sessions and roles at the end); riders use a demo sign-in because the seeded riders have no passwords. Validate IDs, coordinates, fares, filters and status transitions on the server.
 
 | Method and path | Input | Output / inherited operation |
 |---|---|---|
@@ -18,7 +18,7 @@ The browser talks only to the API. The API calls PostgreSQL procedures/views and
 | GET /api/riders/:id/audit | from, to, page, pageSize | Read-only audit rows with stored balance_after and date-filter opening balance |
 | GET /api/analytics/revenue | vehicleId, from, to, page, pageSize | Moving-average series and DENSE_RANK from the inherited SQL query, extended for calendar days |
 | GET /api/analytics/summary | vehicleId, page, pageSize | Materialized-view totals, paginated vehicle stats, persisted lastRefreshedAt |
-| POST /api/analytics/refresh | None | Refresh materialized view; persist timestamp only after successful refresh |
+| POST /api/analytics/refresh | None (admin sign-in required) | Refresh materialized view; persist timestamp only after successful refresh |
 | GET /api/vehicles/nearby | longitude, latitude, limit | geoNear within 5,000m; distinct fresh vehicles sorted by distance, bounded result count |
 | GET /api/reviews/summary | Optional vehicleId/date range | Mongo facet rating distribution, average/count, top tags |
 | GET /api/reviews | Optional vehicleId/date range, page, pageSize | Paginated TripReviews |
@@ -140,3 +140,25 @@ All errors use {error: {code, message}}. Treat FAILED procedure output as an err
 | 500 | INTERNAL_ERROR | The request could not be completed. |
 
 All API routes are implemented and tested. Frontend screens and small-dataset browser checks are complete. Full-size checks were run on 11 October 2026; see [scale_verification.md](scale_verification.md). The revenue ranking page now asks the SQL function only for the day or days it shows, so the response is unchanged but faster.
+
+## Sessions and roles
+
+A session is a signed HttpOnly, SameSite=Strict cookie that lasts 8 hours. Every endpoint except GET /api/health needs one (401 SESSION_REQUIRED). Set ADMIN_SESSION_SECRET to keep sessions across API restarts and ADMIN_COOKIE_SECURE=1 when serving over HTTPS.
+
+| Endpoint | Body | Result |
+| --- | --- | --- |
+| GET /api/session | None | {role, id, name}; all null when signed out |
+| POST /api/session/admin | {username, password} | 200 admin session; 401 INVALID_CREDENTIALS; 429 TOO_MANY_ATTEMPTS after 5 failures in a minute; 503 ADMIN_DISABLED when ADMIN_PASSWORD is empty |
+| POST /api/session/rider | {riderId} | 200 rider session (demo sign-in, no password); 404 NOT_FOUND; 403 RIDER_LOGIN_DISABLED when RIDER_DEMO_LOGIN=0 |
+| GET /api/session/riders | ?search, page, pageSize | Rider names and IDs only, for the demo sign-in list; no balances |
+| POST /api/session/logout | None | Clears the cookie |
+
+| Area | Admin | Rider |
+| --- | --- | --- |
+| /api/analytics/* (revenue, summary, refresh) | Yes | 403 ADMIN_REQUIRED |
+| GET /api/riders (all riders) | Yes | 403 ADMIN_REQUIRED |
+| /api/riders/{id}, its audit, GET /api/trips/{id}, PATCH trip status, POST /api/trips | Any rider | Own records only, otherwise 403 FORBIDDEN |
+| GET /api/trips | All trips | Always limited to own trips |
+| Vehicles, nearby vehicles, reviews | Yes | Yes |
+
+Use Depends(require_session), Depends(require_admin) or check_rider(session, rider_id) from api/auth.py on new endpoints.

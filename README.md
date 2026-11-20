@@ -137,7 +137,7 @@ The API and browser tests create their own databases and remove them. `backend_s
 
 - Money is in **INR** (the schema has no currency). The user types the fare.
 - Date filters and the daily revenue use **Asia/Kolkata** days. The API sends times in UTC.
-- Demo rider switching replaces login.
+- Riders use a demo sign-in (the seeded riders have no passwords); the admin signs in with the ADMIN_USERNAME and ADMIN_PASSWORD set in .env.
 - The only trip statuses are `REQUESTED`, `IN TRANSIT` and `COMPLETED`. There is no cancellation or refund. Completing a trip releases the held money; it does not return the fare.
 - A rider can have one `REQUESTED` or `IN TRANSIT` trip at a time. The partial unique index enforces it.
 - There is no driver table, rider contact, route or pickup place in the database, so we did not add them.

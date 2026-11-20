@@ -1,12 +1,14 @@
 from datetime import timezone
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from api.auth import require_session
 
 from api.common import DateInput, FromDate, Page, PageSize, date_bounds, utc_time
 from api.database import mongo
 
-router = APIRouter(prefix='/api/reviews')
+router = APIRouter(prefix='/api/reviews', dependencies=[Depends(require_session)])
 
 
 def review_filter(vehicle_id, start, end):

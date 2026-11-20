@@ -25,14 +25,37 @@ async function booking(page, fare) {
   await page.getByRole('button', { name: 'Confirm booking', exact: true }).click()
 }
 
+const ADMIN_PASSWORD = 'browser-test-admin'
+async function signInRider(page, name) {
+  await page.goto('/')
+  await page.getByRole('button', { name: /^Sign in as rider:/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox').fill(name)
+  await dialog.getByRole('button', { name: new RegExp(name) }).click()
+  await expect(dialog).toBeHidden()
+  await page.getByRole('button', { name: new RegExp('^Continue as ' + name) }).click()
+  await expect(page.getByText('Signed in as rider')).toBeVisible()
+}
+async function signInAdmin(page) {
+  await page.goto('/')
+  await page.getByRole('tab', { name: 'Admin' }).click()
+  await page.getByLabel('Username').fill('admin')
+  await page.getByLabel('Password').fill(ADMIN_PASSWORD)
+  await page.getByRole('button', { name: 'Sign in as admin' }).click()
+  await expect(page.getByRole('button', { name: /^Inspect rider:/ })).toBeVisible()
+}
+async function riderId(page, name) {
+  const found = await (await page.request.get('/api/session/riders?search=' + encodeURIComponent(name))).json()
+  return found.items[0].id
+}
+
 test.beforeEach(async ({ page }) => {
   // Keep automated tests from downloading public map tiles.
   await page.route('https://tile.openstreetmap.org/**', route => route.abort())
-  await page.goto('/')
-  await expect(page.getByRole('button', { name: /^Demo rider: A Booking Rider/ })).toBeVisible()
 })
 
-test('browse uses server pages, searches and a keyboard-closeable detail view', async ({ page }) => {
+test('admin browse uses server pages, searches and a keyboard-closeable detail view', async ({ page }) => {
+  await signInAdmin(page)
   const table = page.getByRole('table', { name: 'Browse riders' })
   await expect(table.locator('tbody tr')).toHaveCount(25)
   await capture(page, 'browse-desktop.png')
@@ -43,14 +66,16 @@ test('browse uses server pages, searches and a keyboard-closeable detail view', 
   await page.getByRole('button', { name: /Open details for B Low Balance/ }).click()
   await expect(page.getByRole('dialog')).toContainText('₹10.00')
   await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toBeHidden()
-  await page.getByRole('button', { name: /^Demo rider:/ }).click()
+  await page.getByRole('button', { name: /^Inspect rider:/ }).click()
   const picker = page.getByRole('dialog')
   await expect(picker.locator('.choice-list li')).toHaveCount(10)
   await picker.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(picker.getByText('60 records · Page 2 of 6')).toBeVisible()
 })
 
-test('real booking, duplicate failure, audit, completion and a second booking', async ({ page, request }) => {
+test('rider books, hits a duplicate, sees the audit, completes and books again', async ({ page }) => {
+  await signInRider(page, 'A Booking Rider')
+  const request = page.request
   await navigate(page, 'Book a Trip')
   await booking(page, '120.10')
   await expect(page.getByRole('heading', { name: 'Trip booked' })).toBeVisible()
@@ -59,8 +84,7 @@ test('real booking, duplicate failure, audit, completion and a second booking', 
   await expect(page.locator('.stat').filter({ hasText: 'Saved balance after booking' })).toContainText('₹379.90')
   await expect(page.locator('.success-card')).toContainText('ESCROW HOLD')
   await capture(page, 'booking-desktop.png')
-  const riders = await (await request.get('/api/riders?search=A%20Booking%20Rider')).json()
-  const rider = riders.items[0]
+  const rider = { id: await riderId(page, 'A Booking Rider') }
   const trips = await (await request.get('/api/trips?riderId=' + rider.id)).json()
   expect(trips.total).toBe(1)
   const audit = await (await request.get('/api/riders/' + rider.id + '/audit')).json()
@@ -71,12 +95,11 @@ test('real booking, duplicate failure, audit, completion and a second booking', 
   await page.getByRole('button', { name: 'Review booking' }).click()
   await page.getByRole('button', { name: 'Confirm booking' }).click()
   await expect(page.getByRole('alert')).toContainText(/active trip/i)
-  await navigate(page, 'Wallet Audit')
+  await navigate(page, 'My Wallet')
   await expect(page.getByRole('table', { name: 'Wallet audit trail' })).toContainText('ESCROW HOLD')
   await capture(page, 'wallet-desktop.png')
-  await navigate(page, 'Browse Data')
-  await page.getByRole('button', { name: 'Trips', exact: true }).click()
-  await page.getByLabel('Selected rider only').check()
+  await navigate(page, 'Trips & Vehicles')
+  await expect(page.getByRole('button', { name: 'Riders', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: /Open details for/ }).click()
   await page.getByRole('button', { name: 'Start trip', exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('IN TRANSIT')
@@ -87,8 +110,9 @@ test('real booking, duplicate failure, audit, completion and a second booking', 
   await expect(page.locator('.success-card')).toContainText('₹378.90')
 })
 
-test('a low balance fails without a debit and inactive vehicles are excluded', async ({ page, request }) => {
-  await choose(page, 'Demo rider', 'Low Balance', 'B Low Balance')
+test('a low balance fails without a debit and inactive vehicles are excluded', async ({ page }) => {
+  await signInRider(page, 'B Low Balance')
+  const request = page.request
   await navigate(page, 'Book a Trip')
   await page.getByRole('button', { name: /^Active vehicle:/ }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('TS-DEMO-27')
@@ -97,13 +121,14 @@ test('a low balance fails without a debit and inactive vehicles are excluded', a
   await booking(page, '11.00')
   await expect(page.getByRole('alert')).toContainText(/balance/i)
   await expect(page.getByRole('heading', { name: 'Trip booked' })).toHaveCount(0)
-  const riders = await (await request.get('/api/riders?search=Low%20Balance')).json()
-  expect(riders.items[0].walletBalance).toBe('10.00')
-  const logs = await (await request.get('/api/riders/' + riders.items[0].id + '/audit')).json()
+  const id = await riderId(page, 'B Low Balance')
+  expect((await (await request.get('/api/riders/' + id)).json()).rider.walletBalance).toBe('10.00')
+  const logs = await (await request.get('/api/riders/' + id + '/audit')).json()
   expect(logs.items).toHaveLength(0)
 })
 
-test('analytics, refresh, nearby positions and reviews read real database results', async ({ page }) => {
+test('admin analytics, refresh, nearby positions and reviews read real database results', async ({ page }) => {
+  await signInAdmin(page)
   await navigate(page, 'Vehicle Analytics')
   await expect(page.getByRole('img', { name: 'Daily revenue and seven-day average chart' })).toBeVisible()
   await page.getByRole('button', { name: 'Refresh totals' }).click()
@@ -135,7 +160,7 @@ test('analytics, refresh, nearby positions and reviews read real database result
 })
 
 test('a lost booking reply locks writes until saved records have been checked', async ({ page }) => {
-  await choose(page, 'Demo rider', 'Recovery', 'C Recovery')
+  await signInRider(page, 'C Recovery')
   await navigate(page, 'Book a Trip')
   let posts = 0
   await page.route('**/api/trips', async route => {
@@ -144,8 +169,8 @@ test('a lost booking reply locks writes until saved records have been checked', 
   })
   await booking(page, '20.00')
   await expect(page.getByRole('heading', { name: 'Check the saved result' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /^Demo rider:/ })).toBeDisabled()
-  await expect(page.getByRole('navigation').getByRole('button', { name: 'Browse Data', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeDisabled()
+  await expect(page.getByRole('navigation').getByRole('button', { name: 'Trips & Vehicles', exact: true })).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Check trips and wallet', exact: true })).toBeEnabled({ timeout: 20000 })
   await page.getByRole('button', { name: 'Check trips and wallet', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Continue after checking' })).toBeEnabled()
@@ -157,6 +182,7 @@ test('a lost booking reply locks writes until saved records have been checked', 
 })
 
 test('read errors and empty search results stay usable', async ({ page }) => {
+  await signInAdmin(page)
   await page.getByLabel('Search riders').fill('NoMatchingRider')
   await expect(page.getByText('No records match these filters.')).toBeVisible()
   await page.route('**/api/riders?search=broken**', route => route.fulfill({ status: 503, json: { error: { message: 'Temporary data failure.' } } }))
@@ -165,32 +191,66 @@ test('read errors and empty search results stay usable', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
 })
 
-test('phone navigation, large balances and scrollable tables fit the screen', async ({ page }) => {
+test('rider phone navigation, large balances and touch targets fit the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
+  await signInRider(page, 'D Phone Rider')
   await expect(page.getByRole('navigation')).toBeHidden()
-  await choose(page, 'Demo rider', 'Phone', 'D Phone Rider')
   await page.getByRole('button', { name: 'Open navigation' }).click()
-  await navigate(page, 'Wallet Audit')
+  await navigate(page, 'My Wallet')
   await expect(page.getByRole('navigation')).toBeHidden()
   await expect(page.getByText('₹9,99,99,99,999.99', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   const balance = await page.getByText('₹9,99,99,99,999.99', { exact: true }).boundingBox()
   expect(balance.height).toBeLessThan(40)
-  const touch = await page.getByRole('button', { name: /^Demo rider:/ }).boundingBox()
+  const touch = await page.getByRole('button', { name: 'Sign out', exact: true }).boundingBox()
   expect(touch.height).toBeGreaterThanOrEqual(44)
-  // The README picture uses a normal rider with saved wallet entries, not the stress-test rider above.
-  await choose(page, 'Demo rider', 'A Booking Rider', 'A Booking Rider')
+})
+
+test('admin phone view inspects a rider and scrolls wide tables', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await signInAdmin(page)
+  await choose(page, 'Inspect rider', 'A Booking Rider', 'A Booking Rider')
+  await page.getByRole('button', { name: 'Open navigation' }).click()
+  await navigate(page, 'Wallet Audit')
   await expect(page.getByRole('table', { name: 'Wallet audit trail' })).toBeVisible()
-  await capture(page, 'wallet-phone.png')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: 'Open navigation' }).click()
   await navigate(page, 'Browse Data')
   const table = page.getByRole('region', { name: 'Browse riders' })
   expect(await table.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
 })
 
+test('rider and admin get separate views, and the API enforces the split', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1, name: /Every ride, perfectly in sync/ })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toHaveCount(0)
+  for (const section of ['How it works', 'Rider & admin', 'Fleet']) await expect(page.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: section })).toBeVisible()
+  await page.getByRole('tab', { name: 'Admin' }).click()
+  await page.getByLabel('Username').fill('admin')
+  await page.getByLabel('Password').fill('not-the-password')
+  await page.getByRole('button', { name: 'Sign in as admin' }).click()
+  await expect(page.getByRole('alert')).toContainText('Incorrect username or password')
+  await signInRider(page, 'A Booking Rider')
+  const nav = page.getByRole('navigation')
+  for (const title of ['Book a Trip', 'My Wallet', 'Trips & Vehicles', 'Nearby Vehicles', 'Trip Reviews']) await expect(nav.getByRole('button', { name: title, exact: true })).toBeVisible()
+  for (const title of ['Vehicle Analytics', 'Browse Data', 'Wallet Audit']) await expect(nav.getByRole('button', { name: title, exact: true })).toHaveCount(0)
+  expect((await page.request.get('/api/riders')).status()).toBe(403)
+  expect((await page.request.get('/api/analytics/summary')).status()).toBe(403)
+  const other = await (await page.request.get('/api/session/riders?search=Low%20Balance')).json()
+  expect((await page.request.get('/api/riders/' + other.items[0].id + '/audit')).status()).toBe(403)
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1, name: /Every ride, perfectly in sync/ })).toBeVisible()
+  expect((await page.request.get('/api/trips')).status()).toBe(401)
+  await signInAdmin(page)
+  const adminNav = page.getByRole('navigation')
+  for (const title of ['Browse Data', 'Vehicle Analytics', 'Wallet Audit', 'Nearby Vehicles', 'Trip Reviews']) await expect(adminNav.getByRole('button', { name: title, exact: true })).toBeVisible()
+  await expect(adminNav.getByRole('button', { name: 'Book a Trip', exact: true })).toHaveCount(0)
+  expect((await page.request.get('/api/riders')).status()).toBe(200)
+})
 
-test('repeat clicks send one booking and lock rider changes while saving', async ({ page, request }) => {
-  await choose(page, 'Demo rider', 'Demo Rider 04', 'Demo Rider 04')
+test('repeat clicks send one booking and lock sign-out while saving', async ({ page }) => {
+  await signInRider(page, 'Demo Rider 04')
+  const request = page.request
   await navigate(page, 'Book a Trip')
   let posts = 0, release
   const gate = new Promise(resolve => { release = resolve })
@@ -202,15 +262,16 @@ test('repeat clicks send one booking and lock rider changes while saving', async
   await booking(page, '12.3')
   await expect(page.getByRole('button', { name: 'Booking…', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Booking…', exact: true }).dispatchEvent('click')
-  await expect(page.getByRole('button', { name: /^Demo rider:/ })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeDisabled()
   expect(posts).toBe(1); release()
   await expect(page.getByRole('heading', { name: 'Trip booked' })).toBeVisible()
-  const data = await (await request.get('/api/riders?search=Demo%20Rider%2004')).json()
-  const trips = await (await request.get('/api/trips?riderId=' + data.items[0].id)).json()
-  expect(trips.total).toBe(1); expect(data.items[0].walletBalance).toBe('487.70')
+  const id = await riderId(page, 'Demo Rider 04')
+  const trips = await (await request.get('/api/trips?riderId=' + id)).json()
+  expect(trips.total).toBe(1); expect((await (await request.get('/api/riders/' + id)).json()).rider.walletBalance).toBe('487.70')
 })
 
 test('review refresh failure keeps saved results and labels them out of date', async ({ page }) => {
+  await signInRider(page, 'A Booking Rider')
   await navigate(page, 'Trip Reviews')
   await expect(page.getByRole('table', { name: 'Trip reviews' }).locator('tbody tr')).toHaveCount(7)
   await page.route('**/api/reviews/summary', route => route.fulfill({ status: 503, json: { error: { message: 'Reviews unavailable.' } } }))

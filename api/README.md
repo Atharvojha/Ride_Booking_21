@@ -16,7 +16,7 @@ For an already-seeded database, follow the main README commands for SQL 03, 04, 
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 ~~~
 
-Open http://127.0.0.1:8000/docs for the request forms. GET /api/health checks both databases. The server allows the web app at localhost:5173 and 127.0.0.1:5173; WEB_ORIGINS can set a comma-separated list of other local origins.
+Open http://127.0.0.1:8000/docs for the request forms. GET /api/health checks both databases. Every endpoint except GET /api/health needs a signed-in session: an admin (ADMIN_USERNAME and ADMIN_PASSWORD in .env) or a rider (demo sign-in). See docs/api_endpoints.md, Sessions and roles. The server allows the web app at localhost:5173 and 127.0.0.1:5173; WEB_ORIGINS can set a comma-separated list of other local origins.
 
 ## What works
 

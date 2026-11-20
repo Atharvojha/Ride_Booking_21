@@ -127,11 +127,11 @@ export function Modal({ title, onClose, children, locked = false }) {
   </dialog>
 }
 
-export function Picker({ kind, label, value, onChange, disabled = false, active, optional = false, title, params = {} }) {
+export function Picker({ kind, label, value, onChange, disabled = false, active, optional = false, title, params = {}, endpoint }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const query = useQuery(open ? apiUrl('/api/' + kind, { search, page, pageSize: 10, active, ...params }) : null)
+  const query = useQuery(open ? apiUrl(endpoint || '/api/' + kind, { search, page, pageSize: 10, active, ...params }) : null)
   const name = row => kind === 'riders' ? row.name : row.licensePlate + ' · ' + row.class
   return <div className="picker"><span className="field-label">{label}</span>
     <button className="picker-button" title={title} aria-label={label + ": " + (value ? name(value) : "Choose")} disabled={disabled} onClick={() => { setSearch(''); setPage(1); setOpen(true) }}>
@@ -141,7 +141,7 @@ export function Picker({ kind, label, value, onChange, disabled = false, active,
       {optional && <button className="secondary" onClick={() => { onChange(null); close(() => setOpen(false)) }}>All vehicles</button>}
       <Feedback query={query} hasRows={query.data?.items.length} empty={'No ' + kind + ' match your search.'} rows={4} />
       <ul className="choice-list">{query.data?.items.map(row => <li key={row.id}><button onClick={() => { onChange(row); close(() => setOpen(false)) }}>
-        <span><strong>{name(row)}</strong><small>{shortId(row.id)}{kind === 'riders' ? ' · Wallet ' + money(row.walletBalance) : row.isActive ? ' · Active' : ' · Inactive'}</small></span>
+        <span><strong>{name(row)}</strong><small>{shortId(row.id)}{kind === 'riders' ? (row.walletBalance === undefined ? '' : ' · Wallet ' + money(row.walletBalance)) : row.isActive ? ' · Active' : ' · Inactive'}</small></span>
         {kind === 'vehicles' && <Icon name={classIcon(row.class)} />}</button></li>)}</ul>
       {query.data && <Pager page={page} pageSize={10} total={query.data.total} onPage={setPage} disabled={query.loading} />}
     </>}</Modal>}

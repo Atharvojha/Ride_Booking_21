@@ -4,8 +4,10 @@ import { useQuery } from '../useQuery'
 import { Badge, ClassChip, Icon, Dates, Feedback, Pager, Table } from '../components'
 import { DetailDialog } from '../details'
 
-export default function Browse({ actor }) {
-  const [kind, setKind] = useState('riders')
+export default function Browse({ actor, role = 'admin' }) {
+  // Riders see their own trips and the fleet; admins also see every rider.
+  const kinds = role === 'admin' ? ['riders', 'vehicles', 'trips'] : ['trips', 'vehicles']
+  const [kind, setKind] = useState(kinds[0])
   const [search, setSearch] = useState('')
   const [typed, setTyped] = useState('')
   const [active, setActive] = useState('')
@@ -15,7 +17,7 @@ export default function Browse({ actor }) {
   const [dates, setDates] = useState({ from: '', to: '' })
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState(null)
-  const params = kind === 'trips' ? { status, ...dates, riderId: mine ? actor?.id : null } :
+  const params = kind === 'trips' ? { status, ...dates, riderId: mine || role !== 'admin' ? actor?.id : null } :
     kind === 'vehicles' ? { search, active, class: vehicleClass } : { search }
   const query = useQuery(apiUrl('/api/' + kind, { ...params, page, pageSize: 25 }))
   useEffect(() => { if (typed === search) return; const timer = setTimeout(() => { setSearch(typed); setPage(1) }, 250); return () => clearTimeout(timer) }, [typed, search])
@@ -32,16 +34,16 @@ export default function Browse({ actor }) {
     { key: 'fareAmount', label: 'Fare', align: 'right', render: row => money(row.fareAmount) }, { key: 'status', label: 'Status', render: row => <Badge status={row.status} /> },
     { key: 'createdAt', label: 'Booked at', render: row => time(row.createdAt) })
   columns.push({ key: 'details', label: 'Details', sticky: true, render: row => <button className="text-button" onClick={() => setDetail(row.id)} aria-label={'Open details for ' + (row.name || row.licensePlate || shortId(row.id))}>Details →</button> })
-  return <section className="card browse-card"><div className="tabs" role="group" aria-label="Browse entities" style={{ '--count': 3, '--index': ['riders', 'vehicles', 'trips'].indexOf(kind) }}>
+  return <section className="card browse-card"><div className="tabs" role="group" aria-label="Browse entities" style={{ '--count': kinds.length, '--index': kinds.indexOf(kind) }}>
     <span className="seg-indicator" aria-hidden="true" />
-    {['riders', 'vehicles', 'trips'].map(value => <button className={kind === value ? 'selected' : ''} aria-pressed={kind === value} key={value} onClick={() => reset(() => { setKind(value); setDetail(null); setTyped(''); setSearch('') })}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
+    {kinds.map(value => <button className={kind === value ? 'selected' : ''} aria-pressed={kind === value} key={value} onClick={() => reset(() => { setKind(value); setDetail(null); setTyped(''); setSearch('') })}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>
     <div className="filters">
       {kind !== 'trips' && <label className="grow">Search {kind}<input placeholder={kind === 'riders' ? 'Name or rider ID' : 'License plate or vehicle ID'} value={typed} maxLength={100} onChange={event => setTyped(event.target.value)} /></label>}
       {kind === 'vehicles' && <><label>Fleet status<select value={active} onChange={event => reset(() => setActive(event.target.value))}><option value="">All vehicles</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
         <label>Vehicle class<input value={vehicleClass} maxLength={30} placeholder="All classes" onChange={event => reset(() => setVehicleClass(event.target.value))} /></label></>}
       {kind === 'trips' && <><label>Trip status<select value={status} onChange={event => reset(() => setStatus(event.target.value))}><option value="">All statuses</option>{['REQUESTED', 'IN TRANSIT', 'COMPLETED'].map(value => <option key={value}>{value}</option>)}</select></label>
         <Dates value={dates} onChange={value => reset(() => setDates(value))} />
-        <label className="checkbox"><input type="checkbox" checked={mine} disabled={!actor} onChange={event => reset(() => setMine(event.target.checked))} />Selected rider only</label></>}
+        {role === 'admin' && <label className="checkbox"><input type="checkbox" checked={mine} disabled={!actor} onChange={event => reset(() => setMine(event.target.checked))} />Selected rider only</label>}</>}
       <button className="secondary" onClick={query.reload} disabled={query.loading}><Icon name="refresh" size={16} />Reload</button>
     </div>
     <div className="card-body"><Feedback query={view} hasRows={shown?.items.length} empty="No records match these filters." hint="Clear the search or filters to see every record." rows={6} />
